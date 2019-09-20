@@ -17,13 +17,16 @@ btn.enabled           = true
 btn.texture.normal    = "Interface\\AddOns\\Glance_Mounts\\mount.tga"
 btn.texture.favorite  = "Interface\\AddOns\\Glance_Mounts\\favorites.tga"
 btn.texture.filter    = "Interface\\ChatFrame\\ChatFrameExpandArrow"
-btn.events            = {"COMPANION_LEARNED","COMPANION_UPDATE","MOUNT_JOURNAL_USABILITY_CHANGED","ZONE_CHANGED","ZONE_CHANGED_NEW_AREA","ZONE_CHANGED_INDOORS"}
+--btn.events            = {"COMPANION_LEARNED","COMPANION_UPDATE","MOUNT_JOURNAL_USABILITY_CHANGED","ZONE_CHANGED","ZONE_CHANGED_NEW_AREA","ZONE_CHANGED_INDOORS"} Outdated 60200
+btn.events            = {"BAG_UPDATE", "ZONE_CHANGED","ZONE_CHANGED_NEW_AREA","ZONE_CHANGED_INDOORS", "UI_ERROR_MESSAGE"}
+btn.onload            = true
 btn.update            = true
 btn.timer1            = true
 btn.click             = true
 btn.tooltip           = true
 btn.menu              = false
 btn.options           = true
+btn.save.perCharacter 	= {["db"] = {}}
 btn.save.perAccount   = {
 	["showGround"] = true,
 	["showFlying"] = true,
@@ -41,6 +44,7 @@ btn.save.allowProfile = true
 ---------------------------
 local HEX = ga.colors.HEX
 local tooltip = gf.Tooltip
+local spc = btn.save.perCharacter
 local spa = btn.save.perAccount
 
 ---------------------------
@@ -52,16 +56,17 @@ local modelWidth = 225
 local mountHeight = 400
 local iconSize = 20
 local Filter = {}
+local Mounts = {}
 
 ---------------------------
 -- not available till lvl 30
 ---------------------------
-if UnitLevel("player") < 20 then btn.enabled = false end
+if UnitLevel("player") < 40 then btn.enabled = false end
 
 ---------------------------
 -- commands
 ---------------------------
-gf.AddCommand("Mounts","random","Summon a random mount",function() if IsMounted() then C_MountJournal.Dismiss() else gf.Mounts.summonRandom() end end)
+gf.AddCommand("Mounts","random","Summon a random mount",function() if IsMounted() then Dismiss() else gf.Mounts.summonRandom() end end)
 
 ---------------------------
 -- arrays
@@ -251,6 +256,113 @@ function gf.Mounts.Filter()
 end
 
 ---------------------------
+-- Classic Mount Functions
+---------------------------
+function UpdateMounts()
+    local bagID=0
+    local slot=0
+    if Mounts == nil then
+        Mounts = {}
+    end
+    for i=0, #Mounts do
+        if (Mounts[i] ~= nil) then
+            Mounts[i].isCollected = false
+        end
+    end
+    for bagID=0,5 do
+        numberOfSlots = GetContainerNumSlots(bagID);
+        for slot=1,numberOfSlots do
+            local itemID = select(10, GetContainerItemInfo(bagID, slot))
+            if (itemID ~= nil) then
+                --print("Item ID: "..itemID)
+                -- Blue Skeletal Horse, [Blue Skeletal Horse], 3, 40, 40, Miscellaneous, Junk, 1, , 132264, 0, 15, 0?, 3, 254
+                local itemName, itemLink, itemRarity, itemLevel, itemMinLevel, itemType, itemSubType, itemStackCount, itemEquipLoc, itemIcon, itemSellPrice, itemClassID, itemSubClassID, bindType, expacID, itemSetID, isCraftingReagent = GetItemInfo(itemID)
+                --local oName, oType, oSub = select(1, GetItemInfo(itemID)), select(6, GetItemInfo(itemID)), select(7, GetItemInfo(itemID))
+                --.itemType, itemSubType
+                -- if (itemName == "Blue Skeletal Horse") then
+                --     print(itemName .. ", " .. itemLink .. ", " .. itemRarity .. ", " .. itemLevel .. ", " .. itemMinLevel .. ", " .. itemType .. ", " .. itemSubType .. ", " .. itemStackCount .. ", " ..itemEquipLoc .. ", " .. itemIcon .. ", " .. itemSellPrice .. ", " .. itemClassID .. ", " .. itemSubClassID .. ", " .. bindType .. ", " .. expacID)
+                -- end
+                if (itemType == "Miscellaneous" and itemSubType == "Junk" and itemRarity >= 3) then
+                    -- Assume item is Mount
+                    --print("Mount: "..itemName)
+                    if spc.db[itemID] == nil then
+                        spc.db[itemID] = {["Name"] = itemName, ["Link"] = itemLink, ["itemID"] = itemID, ["Bag"] = bagID, ["Slot"] = slot, ["Rarity"] = itemRarity, ["Level"] = itemLevel, ["minLevel"] = itemMinLevel, ["Type"] = "Mount", ["Icon"] = itemIcon}
+                        --table.insert(db, [itemID] = {["Name"] = itemName, ["Link"] = itemLink, ["itemID"] = itemID, ["Bag"] = bagID, ["Slot"] = slot, ["Rarity"] = itemRarity, ["Favorite"] = (itemName == MountFav), ["Level"] = itemLevel, ["minLevel"] = itemMinLevel, ["Type"] = "Mount", ["Icon"] = itemIcon, ["isCollected"] = true})
+                        --Mounts[itemID] = {["Name"] = itemName, ["Link"] = itemLink, ["itemID"] = itemID, ["Bag"] = bagID, ["Slot"] = slot, ["Rarity"] = itemRarity, ["Favorite"] = (itemName == MountFav), ["Level"] = itemLevel, ["minLevel"] = itemMinLevel, ["Type"] = "Mount", ["Icon"] = itemIcon, ["isCollected"] = true}
+                    end
+                    Mounts[getMountIndex(itemID)].isCollected = true
+                    --Mounts[itemID].isCollected = true
+                end
+            end
+        end
+    end
+end
+
+function getMountIndex(itemID)
+    local index = -1
+    for i=0,#Mounts do
+        if Mounts[i] ~= nil and Mounts[i].itemID == itemID then
+            return i
+        end
+    end
+    table.insert(Mounts, {["Name"] = spc.db[itemID].Name, ["itemID"] = itemID, ["Favorite"] = true, ["isCollected"] = true})
+    return #Mounts
+end
+--C_MountJournal.GetNumMounts()
+function GetNumMounts()
+    return #Mounts
+end
+--C_MountJournal.GetMountInfo(index)
+function GetMountInfo(index)
+    --cName, cSpellID, cIcon, isSummoned, isUsable, sourceType, isFavorite, isFactionSpecific, faction, hideOnChar, isCollected
+    if Mounts[index] == nil then
+        return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil
+    end
+    itemID = Mounts[index].itemID
+    return spc.db[itemID].Name, spc.db[itemID].itemID, spc.db[itemID].Icon, false, true, 0, Mounts[index].Favorite, false, "Horde", false, Mounts[index].isCollected
+end
+--C_MountJournal.GetMountInfoExtra(i)
+function GetMountInfoExtra(index)
+    --cDisplayID, cDescription, cSource, isSelfMount, mountFlags
+    itemID = Mounts[index].itemID
+    return spc.db[itemID].Icon, "Mount", spc.db[itemID].Link, true, 230
+end
+--C_MountJournal.SetIsFavorite
+function SetIsFavorite(index, isfav)
+    Mounts[index].Favorite = isfav
+end
+--C_MountJournal.GetIsFavorite
+function GetIsFavorite(index)
+    return Mounts[index].Favorite
+end
+--C_MountJournal.Dismiss()
+function Dismiss()
+    --DismissCompanion("MOUNT")
+    for i=1,40 do
+        local name, icon, _, _, _, etime = UnitBuff("player",i)
+        for j=1,#Mounts do
+            if name == Mounts[j].Name then
+                --print(("%d=%s, %s, %.2f minutes left."):format(i,name,icon,(etime-GetTime())/60))
+                inLockdown = InCombatLockdown()
+                if inLockdown then
+                    --print("Cannot Dismount in Combat")
+                    local cInfo = ChatTypeInfo["SYSTEM"]
+                    MessageFrame:AddMessage("Cannot Dismount in Combat", cInfo.r, cInfo.g, cInfo.b, cInfo.id, 2);
+                else
+                    CancelUnitBuff("player", i)
+                end
+            end
+        end
+      end
+    --CancelUnitBuff
+end
+--C_MountJournal.Summon(cID)
+-- function Summon(name)
+--     --CallCompanion("MOUNT",cID)
+--     print("Not Implemented: Attempt to Summon ",name)
+--     UseItemByName(name)
+-- end
+---------------------------
 -- options
 ---------------------------
 function gf.Mounts.options()
@@ -261,14 +373,27 @@ function gf.Mounts.options()
 end
 
 ---------------------------
+-- onload
+---------------------------
+function gf.Mounts.onload()
+    Glance.Debug("function","onload","Mounts")
+    Mounts = {}
+    UpdateMounts()
+end
+---------------------------
 -- update
 ---------------------------
 function gf.Mounts.update(self, event, arg1)
-	Glance.Debug("function","update","Mounts")
-	if event == "COMPANION_LEARNED" then
+    Glance.Debug("function","update","Mounts")
+    if event == "BAG_UPDATE" then
+        UpdateMounts()
+	elseif event == "COMPANION_LEARNED" then
 		gf.Mounts.build()
 	elseif event == "COMPANION_UPDATE" or event =="MOUNT_JOURNAL_USABILITY_CHANGED" or event=="ZONE_CHANGED" or event=="ZONE_CHANGED_NEW_AREA" or event=="ZONE_CHANGED_INDOORS" then
-		gf.Mounts.checkForUpdates()
+        gf.Mounts.checkForUpdates()
+    elseif event == "UI_ERROR_MESSAGE" and (string.match(arg1, "Dismount first") or string.match(arg1, "mounted")) then
+        -- auto dismount when interacting with something that requires dismount (fp / craft / use)
+        Dismiss()
 	else
 		-- hide if moving
 		if GetUnitSpeed("Player") ~= 0 then
@@ -305,8 +430,8 @@ function gf.Mounts.GetNumMounts()
 	Glance.Debug("function","GetNumMounts","Mounts")
 	local totalCount, charCount, pFaction = 0,0,0
 	if UnitFactionGroup("player") == "Alliance" then pFaction = 1 end
-	for i=1, C_MountJournal.GetNumMounts() do
-		local cName, cSpellID, cIcon, isSummoned, isUsable, sourceType, isFavorite, isFactionSpecific, faction, hideOnChar, isCollected = C_MountJournal.GetMountInfo(i)
+	for i=1, GetNumMounts() do
+		local cName, cSpellID, cIcon, isSummoned, isUsable, sourceType, isFavorite, isFactionSpecific, faction, hideOnChar, isCollected = GetMountInfo(i)
 		if (isCollected) then
 			totalCount = totalCount + 1
 		end
@@ -328,9 +453,9 @@ function gf.Mounts.click(self, button, down)
 	Glance.Debug("function","click","Mounts")
 	if button == "LeftButton" then
 		if IsMounted() then
-			C_MountJournal.Dismiss()
+			Dismiss()
 		else
-			C_MountJournal.Summon(0)
+			gf.Mounts.summon(0)
 		end
 	else	
 		gf.Mounts.build()
@@ -343,14 +468,16 @@ end
 ---------------------------
 function gf.Mounts.summon(cID)
 	Glance.Debug("function","summon","Mounts")
-	local isUsable = select(5,C_MountJournal.GetMountInfo(cID))
-	local isSummoned = select(4,C_MountJournal.GetMountInfo(cID))
+	local isUsable = select(5,GetMountInfo(cID))
+	local isSummoned = select(4,GetMountInfo(cID))
 	if IsIndoors() then isUsable = false end
 	if isSummoned then
-		C_MountJournal.Dismiss(cID)
+		Dismiss(cID)
 	else
-		if isUsable then
-			C_MountJournal.Summon(cID)
+		if Mounts[cID] ~= nil and isUsable then
+            --Summon(Mounts[cID].Name)
+            print("Not Implemented: Attempt to Summon ",Mounts[cID].Name)
+            --UseItemByName(Mounts[cID].Name)
 		end
 	end
 end
@@ -373,8 +500,8 @@ end
 ---------------------------
 function gf.Mounts.mouseOver(cID, cSpellID, cDisplayID, cName, cDescription)
 	Glance.Debug("function","mouseOver","Mounts")
-	local isUsable = select(5,C_MountJournal.GetMountInfo(cID))
-	local isSummoned = select(4,C_MountJournal.GetMountInfo(cID))
+	local isUsable = select(5,GetMountInfo(cID))
+	local isSummoned = select(4,GetMountInfo(cID))
 	local fs = _G["Glance_Mount_Buttons_FontString_"..cSpellID]
 	if IsIndoors() then isUsable = false end
 	-- update the model
@@ -390,8 +517,8 @@ end
 ---------------------------
 function gf.Mounts.mouseOut(cID, cSpellID)
 	Glance.Debug("function","mouseOut","Mounts")
-	local isUsable = select(5,C_MountJournal.GetMountInfo(cID))
-	local isSummoned = select(4,C_MountJournal.GetMountInfo(cID))
+	local isUsable = select(5,GetMountInfo(cID))
+	local isSummoned = select(4,GetMountInfo(cID))
 	local fs = _G["Glance_Mount_Buttons_FontString_"..cSpellID]
 	if IsIndoors() then isUsable = false end
 	-- mouseout, turn off the model
@@ -412,7 +539,7 @@ function gf.Mounts.mouseClick(cID, button)
 		gf.Mounts.summon(cID)
 	else	
 		-- set/unset favorite
-		C_MountJournal.SetIsFavorite(cID, not C_MountJournal.GetIsFavorite(cID))
+		SetIsFavorite(cID, not GetIsFavorite(cID))
 	end
 	--reset 
 	gf.Mounts.checkForUpdates()
@@ -446,9 +573,9 @@ function gf.Mounts.checkForUpdates()
 	-- not built yet, go away
 	if gfrm.mountFrame == nil then return end
 	
-	for i=1, C_MountJournal.GetNumMounts() do
-		local cName, cSpellID, cIcon, isSummoned, isUsable, sourceType, isFavorite, isFactionSpecific, faction, hideOnChar, isCollected = C_MountJournal.GetMountInfo(i)
-		local cDisplayID, cDescription, cSource, isSelfMount, mountFlags = C_MountJournal.GetMountInfoExtra(i)
+	for i=1, GetNumMounts() do
+		local cName, cSpellID, cIcon, isSummoned, isUsable, sourceType, isFavorite, isFactionSpecific, faction, hideOnChar, isCollected = GetMountInfo(i)
+		local cDisplayID, cDescription, cSource, isSelfMount, mountFlags = GetMountInfoExtra(i)
 		
 		-- bliz used to handle this..
 		if IsIndoors() then isUsable = false end
@@ -499,9 +626,9 @@ function gf.Mounts.applyFilters(text)
 	-- not built yet, go away
 	if gfrm.mountFrame == nil then return end
 	local previousFrame = gfrm.mountListFrame
-	for i=1, C_MountJournal.GetNumMounts() do
-		local cName, cSpellID, cIcon, isSummoned, isUsable, sourceType, isFavorite, isFactionSpecific, faction, hideOnChar, isCollected = C_MountJournal.GetMountInfo(i)
-		local cDisplayID, cDescription, cSource, isSelfMount, mountFlags = C_MountJournal.GetMountInfoExtra(i)
+	for i=1, GetNumMounts() do
+		local cName, cSpellID, cIcon, isSummoned, isUsable, sourceType, isFavorite, isFactionSpecific, faction, hideOnChar, isCollected = GetMountInfo(i)
+		local cDisplayID, cDescription, cSource, isSelfMount, mountFlags = GetMountInfoExtra(i)
 		
 		-- link to the proper objects
 		local m_btn = _G["Glance_Mount_Buttons_"..cSpellID]
@@ -616,7 +743,7 @@ function gf.Mounts.buildFrames()
 		
 		-- create the filter by type button
 		gfrm.mountFrameFilterMenu = CreateFrame("Frame", "Glance_mountFrameFilterMenu", nil, "UIDropDownMenuTemplate")
-		gfrm.mountFrameFilter = CreateFrame("BUTTON", "Glance_mountFrameFilter", gfrm.mountFrame, "UIMenuButtonStretchTemplate")
+		gfrm.mountFrameFilter = CreateFrame("BUTTON", "Glance_mountFrameFilter", gfrm.mountFrame, "InsecureActionButtonTemplate, UIMenuButtonStretchTemplate")
 		gfrm.mountFrameFilter:SetPoint("TOPLEFT", gfrm.mountFrame, "TOPLEFT", 10, -10)	
 		gfrm.mountFrameFilter:SetWidth(150)
 		gfrm.mountFrameFilter:SetHeight(30)
@@ -643,7 +770,14 @@ function gf.Mounts.buildFrames()
 		-- register for clicks
 		gfrm.mountFrameFilter:RegisterForClicks("AnyUp")					
 		-- mouse events
-		gfrm.mountFrameFilter:SetScript("OnClick", function(self, button, down) gf.Mounts.EasyMenu() end)
+        gfrm.mountFrameFilter:SetScript("OnClick", function(self, button, down) gf.Mounts.EasyMenu() end)
+        -- protected attributes
+        -- gfrm.mountFrameFilter:SetAttribute("type", "spell")
+        -- gfrm.mountFrameFilter:SetAttribute("*spell1", name) 
+        -- gfrm.mountFrameFilter:SetAttribute("itemid", cID)
+        -- gfrm.mountFrameFilter:SetAttribute("checkselfcast","1")
+        -- gfrm.mountFrameFilter:SetAttribute("checkfocuscast","1")
+        -- gfrm.mountFrameFilter:SetAttribute("enabled", true)
 		
 		-- create the search box
 		gfrm.mountFrameSearch = CreateFrame("EDITBOX", "Glance_mountFrameSearch", gfrm.mountFrameFilter, "SearchBoxTemplate")
@@ -729,9 +863,9 @@ function gf.Mounts.buildButtons()
 	local widest = 0
 	
 	-- iterate mounts
-	for i=1, C_MountJournal.GetNumMounts() do
-		local cName, cSpellID, cIcon, isSummoned, isUsable, sourceType, isFavorite, isFactionSpecific, faction, hideOnChar, isCollected = C_MountJournal.GetMountInfo(i)
-		local cDisplayID, cDescription, cSource, isSelfMount, mountFlags = C_MountJournal.GetMountInfoExtra(i)		
+	for i=1, GetNumMounts() do
+		local cName, cSpellID, cIcon, isSummoned, isUsable, sourceType, isFavorite, isFactionSpecific, faction, hideOnChar, isCollected = GetMountInfo(i)
+		local cDisplayID, cDescription, cSource, isSelfMount, mountFlags = GetMountInfoExtra(i)		
 		if IsIndoors() then isUsable = false end
 		
 		-- if you have it, and it's the right faction
@@ -791,7 +925,8 @@ function gf.Mounts.buildButtons()
 					
 					-- register for clicks
 					m_btn:RegisterForClicks("AnyUp")					
-					-- mouse events
+                    -- mouse events
+                    --GameTooltip:SetItemByID(cSpellID);
 					m_btn:SetScript("OnEnter", function(self, button, down) gf.Mounts.mouseOver(i, cSpellID, cDisplayID, cName, cDescription.."\n\n"..cSource.."\n\n"..HEX.gold..tostring(ga.mountFlags[mountFlags])) end)
 					m_btn:SetScript("OnLeave", function(self, button, down) gf.Mounts.mouseOut(i, cSpellID) end)
 					m_btn:SetScript("OnClick", function(self, button, down) gf.Mounts.mouseClick(i, button) end)
@@ -816,5 +951,6 @@ end
 -- load on demand
 ---------------------------
 if gv.loaded then
-	gf.Enable("Mounts")
+    gf.Enable("Mounts")
+    hooksecurefunc("UseItemByName", Summon)
 end
