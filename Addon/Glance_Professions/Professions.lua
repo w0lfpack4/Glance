@@ -29,6 +29,45 @@ local HEX = ga.colors.HEX
 local tooltip = gf.Tooltip
 
 ---------------------------
+-- legacy
+---------------------------
+function GetProfessions()
+    local profs = {
+        "Fishing",
+        "Cooking",
+        "First Aid",
+        "Enchanting",
+        "Tailoring",
+    }
+    -- prof1, prof2, archaeology, fishing, cooking, firstAid
+	local Professions = {
+		[1] = {["Name"] = "Unknown"},
+		[2] = {["Name"] = "Unknown"},
+		[2] = {["Name"] = "Fishing"},
+		[3] = {["Name"] = "Cooking"},
+		[4] = {["Name"] = "First Aid"}
+    }
+    -- GetSpellName not Supported
+    -- for i=0,60 do
+    --     spellName, spellRank = GetSpellName( i, "BOOKTYPE_SPELL" )
+    --     if (profs[spellName] ~= nil) then
+    --         local name, icon, skillLevel, maxSkillLevel,_,_,_,_ = GetProfessionInfo(spellName)
+    --         Professions[i] = { ["Name"] = name, ["Icon"] = icon, ["Skill"] = skillLevel, ["SkillMax"] = maxSkillLevel }
+    --         if (name ~= nil) then
+    --             print("Prof: ", name, " - [", icon, "] at ", skillLevel, "{", maxSkillLevel, "}")
+    --         end
+    --     end
+    -- end
+    for i=0,#profs do
+        local name, icon, skillLevel, maxSkillLevel,_,_,_,_ = GetProfessionInfo(i)
+        Professions[i] = { ["Name"] = name, ["Icon"] = icon, ["Skill"] = skillLevel, ["SkillMax"] = maxSkillLevel }
+        if (name ~= nil) then
+            print("Prof: ", name, " - [", icon, "] at ", skillLevel, "{", maxSkillLevel, "}")
+        end
+    end
+    return Professions
+end
+---------------------------
 -- variables
 ---------------------------
 local maxCap = 700
@@ -39,23 +78,12 @@ ga.ProfessionCaps = { -- add 75 to each level
 	[150] = "Journeyman",
 	[225] = "Expert",
 	[300] = "Artisan",
-	[375] = "Master",
-	[450] = "Grand Master",
-	[525] = "Illustrious",
-	[600] = "Zen Master",
-	[675] = "Draenor Master", -- warlords placeholder
-	[700] = "Draenor Master", -- warlords placeholder
 }
 ga.ProfessionWarnings = {	
 	["Apprentice"] = 50,
 	["Journeyman"] = 125,
 	["Expert"] = 200, -- all (first aid +25???)
 	["Artisan"] = 275,
-	["Master"] = 350,
-	["Grand Master"] = 425,
-	["Illustrious"] = 500,
-	["Zen Master"] = 600, -- warlords placeholder
-	--["Draenor Master"] = 675, -- warlords placeholder
 }
 -- racial buffs
 ga.Racial = {
@@ -63,7 +91,6 @@ ga.Racial = {
 	["Cooking"]       = {107073,15},
 	["Enchanting"]    = {28877,10}, -- may be removed in warlords
 	["Engineering"]   = {20593,15},
-	["Jewelcrafting"] = {28875,10},
 }
 
 ---------------------------
@@ -178,7 +205,7 @@ function gf.Professions.menu(level,UIDROPDOWNMENU_MENU_VALUE)
 		if gf.isMenuValue("tracking") then
 			for i=1,6 do
 				if ga.Professions[i] ~= nil then
-					local name, icon, skillLevel, maxSkillLevel,_,_,_,skillMod = GetProfessionInfo(ga.Professions[i])
+					local name, icon, skillLevel, maxSkillLevel,_,_,_,skillMod = GetProfessionInfo(ga.Professions[i].Name)
 					gf.setMenuOption(spc.Profession == ga.Professions[i],name,name,level,function() spc.Profession = ga.Professions[i]; gf.Professions.update() end,icon)
 				end
 			end
