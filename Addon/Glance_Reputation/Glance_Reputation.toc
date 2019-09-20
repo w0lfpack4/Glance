@@ -1,4 +1,4 @@
-## Interface: 60200
+## Interface: 11302
 ## Title: |cff0279ffGlance: |cffffffffReputation|r
 ## X-DisplayName: Reputation
 ## Notes: Load on Demand Data Broker for Glance
