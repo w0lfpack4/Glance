@@ -16,8 +16,10 @@ local gd = Glance.Data
 ---------------------------
 StaticPopupDialogs["Glance_RELOADUI"] = {
 	text = "Reload your User Interface?",
-	button1 = TEXT(ACCEPT),
-	button2 = TEXT(CANCEL),
+	-- button1 = TEXT(ACCEPT), Outdated 60200
+	-- button2 = TEXT(CANCEL), Outdated 60200
+	button1 = ACCEPT,
+	button2 = CANCEL,
 	OnAccept = function()
 		ReloadUI()
 	end,
