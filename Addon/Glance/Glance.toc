@@ -1,4 +1,4 @@
-## Interface: 60200
+## Interface: 11302
 ## Title: |cff0279ffGlance: |cffffffff(Core)|r
 ## X-DisplayName: Glance
 ## Notes: At-A-Glance Information Bar. Coin, Emblems, Friends, Guild, XP, Rep, Professions, Durability, Repair, LAG, FPS, Mem, Mounts, Location, Wintergrasp Timer, Tol Barad Timer, Dungeon Eligibility, DualSpec, and more.
@@ -11,7 +11,7 @@
 ## X-Description: At-A-Glance Information Bar. Coin, Emblems, Friends, Guild, XP, Rep, Professions, Durability, Repair, LAG, FPS, Mem, Mounts, Location, Wintergrasp Timer, Tol Barad Timer, Dungeon Eligibility, DualSpec, and more.
 ## X-Category: Companions, Guild, Unit Frames, Miscellaneous, Professions, Data Broker
 ## X-New: Locations: Added option for 4 digit coordinates. Pets: Updated pet icon layout, added shift click to dismiss pet. Professions: Added bonus points display for racial traits, equipment, and lures.  Minor tweak to racial bonuses.
-
+## OLDINTERFACE: 60200
 core\Variables.lua
 core\Functions.lua
 modules\Options.lua

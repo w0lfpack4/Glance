@@ -695,7 +695,8 @@ function gf.addonLoaded()
 	gf.loadDefaultVariables()
 	gf.setBackground(1)
 	-- needed for comm
-	RegisterAddonMessagePrefix("Glance")
+    -- RegisterAddonMessagePrefix("Glance") Outdated 60200
+    C_ChatInfo.RegisterAddonMessagePrefix("Glance")
 	Glance.Frames.topFrame:SetText("modules loaded.  configuring...")
 end
 
@@ -924,14 +925,14 @@ function gf.Initialize()
 	Glance.Frames.topFrame:RegisterEvent("PLAYER_LOGIN")
 	Glance.Frames.topFrame:RegisterEvent("PLAYER_LOGOUT")
 	Glance.Frames.topFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
-	Glance.Frames.topFrame:RegisterEvent("UNIT_ENTERING_VEHICLE")
-	Glance.Frames.topFrame:RegisterEvent("UNIT_EXITING_VEHICLE")
+	-- Glance.Frames.topFrame:RegisterEvent("UNIT_ENTERING_VEHICLE") -- Outdated 60200
+	-- Glance.Frames.topFrame:RegisterEvent("UNIT_EXITING_VEHICLE") -- Outdated 60200
 	Glance.Frames.topFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
 	Glance.Frames.topFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
 	Glance.Frames.topFrame:RegisterEvent("PLAYER_UPDATE_RESTING")
 	Glance.Frames.topFrame:RegisterEvent("SAVED_VARIABLES_TOO_LARGE")
-	Glance.Frames.topFrame:RegisterEvent("PET_BATTLE_OPENING_START")
-	Glance.Frames.topFrame:RegisterEvent("PET_BATTLE_CLOSE")
+	-- Glance.Frames.topFrame:RegisterEvent("PET_BATTLE_OPENING_START") -- Outdated 60200
+	-- Glance.Frames.topFrame:RegisterEvent("PET_BATTLE_CLOSE") -- Outdated 60200
 	gf.handleEvents()
 	--Glance.Frames.bottomFrame:Show()
 end
