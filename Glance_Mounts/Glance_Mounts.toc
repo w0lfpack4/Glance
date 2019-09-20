@@ -1,0 +1,15 @@
+## Interface: 60200
+## Title: |cff0279ffGlance: |cffffffffMounts|r
+## X-DisplayName: Mounts
+## Notes: Load on Demand Data Broker for Glance
+## Author: Keg
+## Version: 6.2.0.1
+## X-Category: Broker
+## X-Updated: April 21, 2015
+## X-Description: Displays the number of mounts obtained. Displays a menu of available mounts organized by category and alphabet.  Click to summon a random mount based on your skill and location.
+## X-new: Recreated the module.  Added filters, search, models, data, favorites.
+
+## Dependencies: Glance
+## LoadOnDemand: 1
+
+Mounts.lua

@@ -1,0 +1,15 @@
+## Interface: 60200
+## Title: |cff0279ffGlance: |cffffffffTitles|r
+## X-DisplayName: Titles
+## Notes: Load on Demand Data Broker for Glance
+## Author: Keg
+## Version: 6.2.0.1
+## X-Category: Broker
+## X-Updated: November 15, 2014
+## X-Description: Quick Menu to set character title.
+## X-new: 
+
+## Dependencies: Glance
+## LoadOnDemand: 1
+
+Titles.lua

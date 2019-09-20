@@ -1,0 +1,15 @@
+## Interface: 60200
+## Title: |cff0279ffGlance: |cffffffffProfessions|r
+## X-DisplayName: Professions
+## Notes: Load on Demand Data Broker for Glance
+## Author: Keg
+## Version: 6.2.0.1
+## X-Category: Broker
+## X-Updated: May 17, 2015
+## X-Description: Track profession skill levels.  When tracking gathering skills, the tooltip will suggest what you should be farming, and where.
+## X-new: Added bonus points display for racial traits, equipment, and lures.  Minor tweak to racial bonuses.
+
+## Dependencies: Glance
+## LoadOnDemand: 1
+
+Professions.lua

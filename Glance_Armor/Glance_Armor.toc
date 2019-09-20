@@ -1,0 +1,15 @@
+## Interface: 60200
+## Title: |cff0279ffGlance: |cffffffffArmor|r
+## X-DisplayName: Armor
+## Notes: Load on Demand Data Broker for Glance
+## Author: Keg
+## Version: 6.2.0.1
+## X-Category: Broker
+## X-Updated: April 28, 2015
+## X-Description: Displays the durability of the player's armor, the repair cost, the current item level.  Can Auto-Repair the player's armor at a vendor. Option to use guild funds.   Party stats available.
+## X-New: Added item level overlays on character frame, inspect frame, and tooltip when a target is selected.  Updated item level colors.
+
+## Dependencies: Glance
+## LoadOnDemand: 1
+
+Armor.lua
