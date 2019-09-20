@@ -35,7 +35,17 @@ local name, subName
 function gf.Location.update()
 	if btn.enabled and gv.loaded then -- loaded keeps it from launching when defined
 		--if WorldMapFrame:IsVisible() == nil then
-			local unitx, unity = GetPlayerMapPosition("player")
+            -- local unitx, unity = GetPlayerMapPosition("player") Outdated 60200
+            local m = C_Map.GetBestMapForUnit("player")
+            local unitx, unity
+            if (m ~= nil) then
+                unitx, unity = C_Map.GetPlayerMapPosition(m, "player"):GetXY()
+            else
+                -- default to -1, -1 coordinates for unsupported zones (dungeons)
+                unitx = -1 / 1000
+                unity = -1 / 1000
+            end
+            --local unitx, unity = C_Map.GetPlayerMapPosition(m, "player"):GetXY()
 			local sep, display
 			local s = ((GetUnitSpeed("Player") / 7) * 100);
 			local speed = string.format("%d",s)
@@ -62,12 +72,21 @@ function gf.Location.update()
 					display = display..sep
 				end
 				display = display..subName.." "
-			end
+            end
+            -- hide coordinates in zones that don't support it (dungeons)
 			if spa.DisplayCoords then
 				if spa.DisplayCoordsPlus then
-					display = display..string.format(HEX.lightblue.."("..HEX.white.."%.2f, %.2f"..HEX.lightblue..")", (unitx * 100), (unity * 100)) 
+                    if (m ~= nil) then
+                        display = display..string.format(HEX.lightblue.."("..HEX.white.."%.2f, %.2f"..HEX.lightblue..")", (unitx * 100), (unity * 100)) 
+                    else
+                        display = display
+                    end
 				else
-					display = display..string.format(HEX.lightblue.."("..HEX.white.."%d, %d"..HEX.lightblue..")", (unitx * 100), (unity * 100)) 
+                    if (m ~= nil) then
+                        display = display..string.format(HEX.lightblue.."("..HEX.white.."%d, %d"..HEX.lightblue..")", (unitx * 100), (unity * 100)) 
+                    else
+                        display = display
+                    end
 				end
 			end
 			btn.button:SetText(display)
@@ -81,7 +100,9 @@ end
 ---------------------------
 function gf.Location.tooltip()
 	Glance.Debug("function","tooltip","Location")
-	local unitx, unity = GetPlayerMapPosition("player")
+    -- local unitx, unity = GetPlayerMapPosition("player") Outdated 60200
+    local m = C_Map.GetBestMapForUnit("player")
+    local unitx, unity = C_Map.GetPlayerMapPosition(m, "player"):GetXY()
 	local speed, groundSpeed, flightSpeed, swimSpeed = GetUnitSpeed("Player")
 	tooltip.Title("Location","GLD")
 	tooltip.Double("Zone: ", name, "WHT","GRN")

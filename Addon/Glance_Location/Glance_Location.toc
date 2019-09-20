@@ -1,4 +1,4 @@
-## Interface: 60200
+## Interface: 11302
 ## Title: |cff0279ffGlance: |cffffffffLocation|r
 ## X-DisplayName: Location
 ## Notes: Load on Demand Data Broker for Glance
