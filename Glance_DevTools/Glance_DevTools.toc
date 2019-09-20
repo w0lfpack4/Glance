@@ -1,0 +1,18 @@
+## Interface: 50400
+## Title: |cff0279ffGlance: |cffffffffDevTools|r
+## X-DisplayName: DevTools
+## Notes: Load on Demand Data Broker for Glance
+## Author: Keg
+## Version: 5.4.7.6
+## X-Category: Broker
+## X-Updated: December 2, 2013
+## X-Description: Developer addon used to track frame names.
+## X-new:
+
+## Dependencies: Glance
+## LoadOnDemand: 1
+## DefaultState: disabled
+
+DevToolsVisFrame.lua
+DevToolsFrameStack.lua
+DevTools.lua
