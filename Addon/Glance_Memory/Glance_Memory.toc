@@ -1,4 +1,4 @@
-## Interface: 60200
+## Interface: 11302
 ## Title: |cff0279ffGlance: |cffffffffMemory|r
 ## X-DisplayName: Memory
 ## Notes: Load on Demand Data Broker for Glance

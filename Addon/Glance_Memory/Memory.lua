@@ -301,8 +301,10 @@ end
 ---------------------------
 StaticPopupDialogs["Glance_Memory_RELOADUI"] = {
 	text = "Reload your User Interface?",
-	button1 = TEXT(ACCEPT),
-	button2 = TEXT(CANCEL),
+	-- button1 = TEXT(ACCEPT), Outdated 60200
+	-- button2 = TEXT(CANCEL), Outdated 60200
+	button1 = ACCEPT,
+	button2 = CANCEL,
 	OnAccept = function()	
 		spa.showCPU=true; 
 		spa.MEMCPU = "CPU";
