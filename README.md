@@ -1,0 +1,2 @@
+# Glance
+Glance Information Bar
