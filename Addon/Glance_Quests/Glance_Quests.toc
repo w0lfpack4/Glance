@@ -1,0 +1,15 @@
+## Interface: 11302
+## Title: |cff0279ffGlance: |cffffffffQuests|r
+## X-DisplayName: Quests
+## Notes: Load on Demand Data Broker for Glance
+## Author: FoxLovesYou
+## Version: 6.2.0.1
+## X-Category: Broker
+## X-Updated: April 28, 2015
+## X-Description: Displays the Quest Log, Auto-Accept/Complete, and Log Details
+## X-New: TBA
+
+## Dependencies: Glance
+## LoadOnDemand: 1
+
+Quests.lua
