@@ -22,7 +22,7 @@ btn.update				= true
 btn.tooltip		   		= true
 btn.menu			  	= true
 btn.click				= true
-btn.save.perCharacter 	= {["autoRepair"] = true,["guildRepair"] = true}
+btn.save.perCharacter 	= {["autoRepair"] = true}
 btn.save.perAccount 	= {["showIL"] = true,["showCharacterOverlay"] = true,["showInspectOverlay"] = true,["showTooltipOverlay"] = true}
 btn.save.allowProfile 	= true
 
@@ -65,8 +65,13 @@ ga.slotItems = {
 	"BackSlot",
 	"MainHandSlot",
 	"SecondaryHandSlot",	
-	"TabardSlot",
+    "TabardSlot",
+	--"Ranged",
+    --"INVTYPE_RANGEDRIGHT",
 }
+--select(9,GetItemInfo(GetInventoryItemID("Player", GetInventorySlotInfo("MainHandSlot"))))
+--/script local _, _, _, iLevel = GetItemInfo(GetInventoryItemID("Player", GetInventorySlotInfo("slot")));print(iLevel)
+--/script print(select(9,GetItemInfo(link)))
 gv.party.a["Armor"] = 0
 gv.party.b["Armor"] = 0
 gv.party.c["Armor"] = 0
@@ -229,7 +234,7 @@ function gf.Armor.tooltip()
 	if itemLevel > 0 then
 		tooltip.Space()
 		tooltip.Line("Item Level (iLvl)", "GLD")
-		tooltip.Double("Average Item Level",gf.Armor.iLvl.color(itemLevel), "WHT", "WHT")
+		--tooltip.Double("Average Item Level",gf.Armor.iLvl.color(itemLevel), "WHT", "WHT")
 		tooltip.Double("Equipped Item Level",gf.Armor.iLvl.color(eItemLevel), "WHT", "WHT")
 	end
 		
@@ -246,11 +251,9 @@ function gf.Armor.tooltip()
 	local tbl = {
 		[1] = {["Auto-Repair"] = spc.autoRepair},
 		[2] = {["Check Item Level on Target"] = spa.showIL},
-		[3] = {["Use Guild Funds"] = gf.Armor.repair.canRepair()},
-		[4] = {["Guild funds available today"] = gf.Armor.getGuildFunds()},
 	}
 	tooltip.Options(tbl)
-	tooltip.Notes("open the character tab",nil,"change Options",nil,"Guild funds can only be used if allowed by the guild")	
+	tooltip.Notes("open the character tab",nil,"change Options",nil)	
 end
 
 ---------------------------
@@ -273,7 +276,6 @@ function gf.Armor.menu(level,UIDROPDOWNMENU_MENU_VALUE)
 		gf.setMenuTitle("Armor Options")
 		gf.setMenuHeader("Auto Repair","autorepair",level)
 		gf.setMenuHeader("Check Item Level","showil",level)
-		gf.setMenuHeader("Use Guild Funds","guildrepair",level)
 	end
 	if (level == 2) then
 		if gf.isMenuValue("autorepair") then
@@ -286,10 +288,6 @@ function gf.Armor.menu(level,UIDROPDOWNMENU_MENU_VALUE)
 			gf.setMenuHeader("Character Frame Overlays","showCO",level, not spa.showIL)
 			gf.setMenuHeader("Inspect Frame Overlays","showIO",level, not spa.showIL)
 			gf.setMenuHeader("Tooltip Overlays","showTT",level, not spa.showIL)
-		end
-		if gf.isMenuValue("guildrepair") then
-			gf.setMenuOption(spc.guildRepair==true,"On","On",level,function() spc.guildRepair=true; end)
-			gf.setMenuOption(spc.guildRepair==false,"Off","Off",level,function() spc.guildRepair=false; end)
 		end
 	end	
 	if (level == 3) then
@@ -350,17 +348,6 @@ end
 -- return guild funds available
 ---------------------------
 function gf.Armor.getGuildFunds()
-	Glance.Debug("function","getGuildFunds","Armor")
-	if CanGuildBankRepair() then
-		local GuildMoney = GetGuildBankWithdrawMoney()
-		if GuildMoney == -1 then 
-			return HEX.green.."Unlimited"
-		elseif gf.matchSingle(tostring(GuildMoney),"+") then
-			return HEX.red.."Err"
-		else
-			return GetCoinTextureString(math.ceil(GuildMoney),0)
-		end
-	end
 	return nil
 end
 
@@ -517,15 +504,18 @@ function gf.Armor.iLvl.tooltipScan(link,upgrade)
 	iLevelTooltip:SetHyperlink(link)
 	for i = 1, iLevelTooltip:NumLines() do
 		local text = _G["Glance_Tooltip_iLevelTextLeft"..i]:GetText()
-		if upgrade then
-			local c,t = text:match("Heirloom Upgrade Level: (%d+)/(%d+)")
-			if c ~= nil then return tonumber(c), i end
-		else
-			local match = text:match("Item Level (%d+)")
-			if match ~= nil then return tonumber(match), i end
-		end
+		-- if upgrade then
+        --     local c,t = text:match("Heirloom Upgrade Level: (%d+)/(%d+)")
+        --     print("TT Scan Match: Link="..link.." Level="..tonumber(c))
+		-- 	if c ~= nil then return tonumber(c), i end
+		-- else
+		-- 	local match = text:match("Requires Level (%d+)")
+        --     --print("TT Scan Match: Link="..link.." Level="..tonumber(match))
+		-- 	if match ~= nil then return tonumber(match), i end
+		-- end
 	end
-	return 0
+    local _, _, _, iLevel = GetItemInfo(link);
+	return iLevel
 end
 
 ---------------------------
@@ -632,26 +622,27 @@ function gf.Armor.iLvl.getStats()
 	if not spa.showIL then return end
 	Glance.Debug("function","iLvl.getStats","Armor")
 	-- locals
-	local specID, lvl, count = nil,0,0;
+	local specID, lvl, count = nil,1,0;
 	local dualHand, miaMainHand, miaOffHand = false, false, false;
 	local lClass, eClass = UnitClass("target");
 	
 	-- end if mismatch
 	if not gv.currentInspectUnit == UnitGUID("target") then return end
 		
-	-- get the player spec
-	if (UnitIsUnit("target","player")) then
-		local currentSpec = GetSpecialization();
-		local specID = currentSpec and select(1, GetSpecializationInfo(currentSpec))
-		gv.data.spec = select(2,GetSpecializationInfoByID(specID));
-	-- get the target spec
-	else
-		if (UnitLevel("target") > 9) then
-			local specID = GetInspectSpecialization("target");
-			local _, specName = GetSpecializationInfoByID(specID);
-			gv.data.spec = select(2,GetSpecializationInfoByID(specID));
-		end
-	end
+    -- get the player spec
+    -- Outdated 60200
+	-- if (UnitIsUnit("target","player")) then
+    --     local currentSpec = GetSpecialization();
+	-- 	local specID = currentSpec and select(1, GetSpecializationInfo(currentSpec))
+	-- 	gv.data.spec = select(2,GetSpecializationInfoByID(specID));
+	-- -- get the target spec
+	-- -- else
+	-- -- 	if (UnitLevel("target") > 9) then
+	-- -- 		local specID = GetInspectSpecialization("target");
+	-- -- 		local _, specName = GetSpecializationInfoByID(specID);
+	-- -- 		gv.data.spec = select(2,GetSpecializationInfoByID(specID));
+	-- -- 	end
+	-- end
 	
 	-- fury spec
 	if (specID == "268") then
@@ -687,6 +678,7 @@ function gf.Armor.iLvl.getStats()
 					end
 				end
 				
+                --print("Info: Link="..link.." Level="..level.." Rarity="..rarity)
 				-- check other stats
 				if (level) then
 					-- check for boa gear
@@ -713,9 +705,9 @@ function gf.Armor.iLvl.getStats()
 						end
 					end
 					lvl = lvl + level
-					gv.data.slot[i] = level
+                    gv.data.slot[i] = level
 				end
-			else				
+			else
 				--could not get item information, probably missing
 				if (i==16) then
 					miaMainHand = true;
@@ -821,17 +813,51 @@ end
 ---------------------------
 -- find item levels
 ---------------------------
+
+---------------------------
+-- item level by slot
+---------------------------
+
+function gf.Armor.iLvl.GetItemLevel(slot)
+	if GetInventoryItemID("Player", GetInventorySlotInfo(slot)) ~= nil then
+		local _, _, _, iLevel = GetItemInfo(GetInventoryItemID("Player", GetInventorySlotInfo(slot)));
+		return iLevel;
+	else 
+		return -1;
+	end
+end
+
+---------------------------
+-- legacy average item level
+---------------------------
+
+function GetAverageItemLevel()
+	local itemLevel = 0
+    local eItemLevel = 0
+	for i=1,#ga.slotItems do
+		eItemLevel = eItemLevel + gf.Armor.iLvl.GetItemLevel(ga.slotItems[i]);
+	end
+	if select(9,GetItemInfo(GetInventoryItemID("Player", GetInventorySlotInfo("MainHandSlot")))) == "INVTYPE_2HWEAPON" then
+		eItemLevel = math.floor(eItemLevel/#ga.slotItems-1)
+	else
+		eItemLevel = math.floor(eItemLevel/#ga.slotItems)
+    end
+    print("Average Item Level: ",eItemLevel)
+    return eItemLevel, eItemLevel
+end
+
 function gf.Armor.iLvl.getEquipmentLevels()
 	if not spa.showCharacterOverlay then return end
 	Glance.Debug("function","iLvl.getEquipmentLevels","Armor")
-	local itemLevel, eItemLevel = GetAverageItemLevel()
+    --local itemLevel, eItemLevel = GetAverageItemLevel() Oudated 60200
+    local itemLevel, eItemLevel = GetAverageItemLevel()
 	for i = 1,18 do
 		local slot = "Character"..ga.slotItems[i];
 		if (i ~= 4) then
-			local link = GetInventoryItemLink(GetUnitName("player",true),i);
+            local link = GetInventoryItemLink(GetUnitName("player",true),i);
 			if (link) then
 				local il, line = gf.Armor.iLvl.tooltipScan(link)
-				if not il then il = 0 end
+				if not il then il = -1 end
 				gf.Armor.iLvl.setSlotText(slot,il,itemLevel)
 			end
 		end
@@ -867,6 +893,9 @@ end
 ---------------------------
 -- return guild funds available
 ---------------------------
+function CanGuildBankRepair()
+    return false -- Outdated 60200
+end
 function gf.Armor.repair.canRepair()
 	Glance.Debug("function","repair.canRepair","Armor")
 	local val
@@ -891,12 +920,12 @@ function gf.Armor.repair.repairAll()
 						gf.sendMSG("You don't have enough money for repair!");
 					else
 						RepairAllItems();
-						PlaySound("LOOTWINDOWCOINSOUND")
+						--PlaySound("LOOTWINDOWCOINSOUND")
 						gf.sendMSG("There was not enough money in your daily guild bank allotment for repair.  Your items have been repaired from your own funds for "..GetCoinTextureString(cost,0))		
 					end
 				else
 					RepairAllItems(1)
-					PlaySound("LOOTWINDOWCOINSOUND")
+					--PlaySound("LOOTWINDOWCOINSOUND")
 					gf.sendMSG("Your items have been repaired by the guild for "..GetCoinTextureString(cost,0))
 					return
 				end
@@ -906,7 +935,7 @@ function gf.Armor.repair.repairAll()
 					gf.sendMSG("You don't have enough money for repair!");
 				else
 					RepairAllItems();
-					PlaySound("LOOTWINDOWCOINSOUND")
+					--PlaySound("LOOTWINDOWCOINSOUND")
 					gf.sendMSG("Your items have been repaired for "..GetCoinTextureString(cost,0))	
 				end
 			end
