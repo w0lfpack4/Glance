@@ -89,7 +89,13 @@ function gf.Reputation.tooltip()
 	tooltip.Title("Reputation", "GLD")
 	local hasWatch,hasFriends,printedHeader,showMultiple = false,false,false,false
 	for factionIndex=1,GetNumFactions() do
-		local id, name, color, standing, minVal, maxVal, currentVal, percentVal, remainingVal, isWatched, isHeader  = unpack(gf.Reputation.getFactionInfo(factionIndex))	
+        local id, name, color, standing, minVal, maxVal, currentVal, percentVal, remainingVal, isWatched, isHeader  = unpack(gf.Reputation.getFactionInfo(factionIndex))
+        if color == nil then
+            color = ""
+        end
+        if standing == nil then
+            standing = "?"
+        end
 		local val = gf.getCondition(spc.DisplayReputation == "Percent",percentVal,remainingVal)
 		if isHeader then hasFriends = false end -- reset friend check on next header
 		if select(12,GetFactionInfo(factionIndex)) then	--isWatched		
@@ -228,19 +234,19 @@ end
 function gf.Reputation.getFactionInfo(factionIndex)
 	local name, _, standingID, barMin, barMax, barValue, _, _, isHeader, _, _, isWatched, _, factionID, _, _ = GetFactionInfo(factionIndex)
 	local fsText, fsColor, fsPercent, fsRemaining;
-	local friendID, friendRep, _, _, _, _, friendTextLevel, friendThreshold, nextFriendThreshold = GetFriendshipReputation(factionID);
-	if (friendID ~= nil) then
-		if ( nextFriendThreshold ) then
-			barMin, barMax, barValue = friendThreshold, nextFriendThreshold, friendRep;
-		else
-			barMin, barMax, barValue = 0, 1, 1;
-		end
-		fsText = friendTextLevel;
-		fsColor = ga.standing.fc[standingID];
-	else
+	-- local friendID, friendRep, _, _, _, _, friendTextLevel, friendThreshold, nextFriendThreshold = GetFriendshipReputation(factionID);
+	-- if (friendID ~= nil) then
+	-- 	if ( nextFriendThreshold ) then
+	-- 		barMin, barMax, barValue = friendThreshold, nextFriendThreshold, friendRep;
+	-- 	else
+	-- 		barMin, barMax, barValue = 0, 1, 1;
+	-- 	end
+	-- 	fsText = friendTextLevel;
+	-- 	fsColor = ga.standing.fc[standingID];
+	-- else
 		fsText = ga.standing.l[standingID];
 		fsColor = ga.standing.c[standingID];
-	end	
+	-- end	
 	fsPercent = gf.Reputation.calculate(barMin,barValue,barMax)
 	fsRemaining = barMax - barValue
 	return {standingID, name, fsColor, fsText, barMin, barMax, barValue, fsPercent, fsRemaining, isWatched, isHeader}
