@@ -40,10 +40,17 @@ ga.Clients = {
 ---------------------------
 -- update
 ---------------------------
+function GetNumFriends()
+    local _,WoWFriends = C_FriendList.GetNumFriends()
+    if (WoWFriends == nil) then
+        return _, "0"
+    end
+    return _, WoWFriends
+end
 function gf.Friends.update()
 	if btn.enabled and gv.loaded then -- loaded keeps it from launching when defined
 		Glance.Debug("function","update","Friends")
-		local _,WoWFriends = GetNumFriends()
+        local _,WoWFriends = GetNumFriends() -- Outdate 60200
 		local _,RealFriends = BNGetNumFriends()
 		gf.setButtonText(btn.button,"Friends: ",WoWFriends..","..RealFriends,nil,nil)
 	end
@@ -54,13 +61,14 @@ end
 ---------------------------
 function gf.Friends.tooltip()
 	Glance.Debug("function","tooltip","Friends")
-	local _,WoWFriends = GetNumFriends()
+    local _,WoWFriends = GetNumFriends()
 	local _,RealFriends = BNGetNumFriends()
 	
 	-- Friends
 	tooltip.Double(WoWFriends.." Friend(s) Online","Location","GLD","GLD")
 	for i = 0, GetNumFriends() do
-		local name, level, class, area, connected, status, note = GetFriendInfo(i)
+        --local name, level, class, area, connected, status, note = GetFriendInfo(i) Outdated 60200
+        local name, level, class, area, connected, status, note = C_FriendList.GetFriendInfo(i)
 		if connected then
 			local msg1, msg2 = unpack(gf.Friends.formatFriend(name, level, race, class, area))
 			tooltip.Double(msg1, msg2, "WHT", "LBL")
@@ -69,7 +77,8 @@ function gf.Friends.tooltip()
 	-- BNET Friends under friends
 	for j = 1, RealFriends do
 		local presenceID, presenceName,_,_,toon,toonID,client,isOnline,_ = BNGetFriendInfo(j)
-		local _, toonName, _, realmName, _, _, race, class, _, zoneName, level, gameText, _ = BNGetToonInfo(toonID or presenceID)
+        -- local _, toonName, _, realmName, _, _, race, class, _, zoneName, level, gameText, _ = BNGetToonInfo(toonID or presenceID) Outdated 60200
+        local _, toonName, _, realmName, _, _, race, class, _, zoneName, level, gameText, _ = BNGetGameAccountInfo(toonID or presenceID)
 		if isOnline then
 			client = ga.Clients[client] or client			
 			if string.upper(client) == "WOW" then			
@@ -84,7 +93,8 @@ function gf.Friends.tooltip()
 	tooltip.Double(RealFriends.." BattleNet Friend(s) Online","Character","GLD","GLD")
 	for j = 1, RealFriends do
 		local presenceID, presenceName,_,_,toon,toonID,client,isOnline,_ = BNGetFriendInfo(j)
-		local _, toonName, _, realmName, _, _, race, class, _, zoneName, level, gameText, _ = BNGetToonInfo(toonID or presenceID)
+		-- local _, toonName, _, realmName, _, _, race, class, _, zoneName, level, gameText, _ = BNGetToonInfo(toonID or presenceID) Outdated 60200
+		local _, toonName, _, realmName, _, _, race, class, _, zoneName, level, gameText, _ = BNGetGameAccountInfo(toonID or presenceID)
 		if isOnline then
 			local msg1, msg2 = unpack(gf.Friends.formatBNET(presenceName, client, realmName, toonName))
 			tooltip.Double(msg1, msg2, "WHT", "LBL")
