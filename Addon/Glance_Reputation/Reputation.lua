@@ -18,7 +18,7 @@ btn.update            = true
 btn.tooltip           = true
 btn.click             = true
 btn.menu              = true
-btn.save.perCharacter = { ["DisplayReputation"] = "Percent", ["TrackList"] = {} }
+btn.save.perCharacter = { ["DisplayReputation"] = "Percent", ["TrackList"] = {}, ["CountItems"] = true }
 btn.save.allowProfile = true
 
 ---------------------------
@@ -73,8 +73,8 @@ function gf.Reputation.update(self, event, arg1)
 		local title, rep, color = "Rep: ", nil, nil
 		for factionIndex=1,GetNumFactions() do
 			if select(12,GetFactionInfo(factionIndex)) then	--isWatched
-				local id, name, clr, standing, minVal, maxVal, currentVal, percentVal, remainingVal, isWatched, isHeader  = unpack(gf.Reputation.getFactionInfo(factionIndex))	
-				rep = gf.getCondition(spc.DisplayReputation == "Percent",percentVal,remainingVal); color = clr;
+				local id, name, clr, standing, minVal, maxVal, currentVal, percentVal, remainingVal, itemRep, isWatched, isHeader  = unpack(gf.Reputation.getFactionInfo(factionIndex))	
+				rep = gf.getCondition(spc.DisplayReputation == "Percent",percentVal,remainingVal - itemRep); color = clr;
 			end
 		end		
 		gf.setButtonText(btn.button,title,rep,gf.getCondition(rep == nil,HEX.red,HEX.white),color)
@@ -89,7 +89,7 @@ function gf.Reputation.tooltip()
 	tooltip.Title("Reputation", "GLD")
 	local hasWatch,hasFriends,printedHeader,showMultiple = false,false,false,false
 	for factionIndex=1,GetNumFactions() do
-        local id, name, color, standing, minVal, maxVal, currentVal, percentVal, remainingVal, isWatched, isHeader  = unpack(gf.Reputation.getFactionInfo(factionIndex))
+        local id, name, color, standing, minVal, maxVal, currentVal, percentVal, remainingVal, itemRep, isWatched, isHeader  = unpack(gf.Reputation.getFactionInfo(factionIndex))
         if color == nil then
             color = ""
         end
@@ -103,6 +103,8 @@ function gf.Reputation.tooltip()
 			tooltip.Space()
 			tooltip.Double("Percent Earned",color..percentVal,"WHT","GRN")
 			tooltip.Double("Points Remaining",color..remainingVal,"WHT","GRN")
+			tooltip.Double("Item Rep",color..itemRep,"WHT","GRN")
+			tooltip.Double("Total Remaining",color..(remainingVal - itemRep),"WHT","GRN")
 			hasWatch = true
 			if isHeader and select(11,GetFactionInfo(factionIndex)) then -- header and hasRep means friends
 				hasFriends = true
@@ -135,7 +137,7 @@ function gf.Reputation.tooltip()
 			tooltip.Space()
 			tooltip.Line("Multiple Tracking","GLD")
 			for factionIndex=1,GetNumFactions() do
-				local id, name, color, standing, minVal, maxVal, currentVal, percentVal, remainingVal, isWatched, isHeader  = unpack(gf.Reputation.getFactionInfo(factionIndex))	
+				local id, name, color, standing, minVal, maxVal, currentVal, percentVal, remainingVal, itemRep, isWatched, isHeader  = unpack(gf.Reputation.getFactionInfo(factionIndex))	
 				if spc.TrackList[name] then			
 					local val = gf.getCondition(spc.DisplayReputation == "Percent",percentVal,remainingVal)
 					local isFriend = true
@@ -248,10 +250,36 @@ function gf.Reputation.getFactionInfo(factionIndex)
 		fsColor = ga.standing.c[standingID];
 	-- end	
 	fsPercent = gf.Reputation.calculate(barMin,barValue,barMax)
-	fsRemaining = barMax - barValue
-	return {standingID, name, fsColor, fsText, barMin, barMax, barValue, fsPercent, fsRemaining, isWatched, isHeader}
+    fsRemaining = barMax - barValue
+	return {standingID, name, fsColor, fsText, barMin, barMax, barValue, fsPercent, fsRemaining, gf.Reputation.getFactionItems(factionID), isWatched, isHeader}
 end
 
+---------------------------
+-- get faction reputation from items
+---------------------------
+function gf.Reputation.getFactionItems(factionID)
+    if not spc.CountItems then return 0; end
+    --print ("Faction: ",factionID)
+    local itemRep = 0
+    for bagID=0,5 do
+        numberOfSlots = GetContainerNumSlots(bagID);
+        for slot=1,numberOfSlots do
+            local itemID = select(10, GetContainerItemInfo(bagID, slot))
+            if (itemID ~= nil) then
+                local itemName, itemLink, itemRarity, itemLevel, itemMinLevel, itemType, itemSubType, itemStackCount, itemEquipLoc, itemIcon, itemSellPrice, itemClassID, itemSubClassID, bindType, expacID, itemSetID, isCraftingReagent = GetItemInfo(itemID)
+                local count = GetItemCount(itemLink)
+                if (factionID == 576 and itemID == 21377) then -- Deadwood Headdress Feather
+                    itemRep = itemRep + (floor( count / 5 ) * 50)
+                    --print(count, " Feathers == ", (( count / 5 ) * 50), " rep")
+                elseif (factionID == 576 and itemID == 21383) then -- Winterfall Spirit Beads
+                    itemRep = itemRep + (floor( count / 5 ) * 50)
+                    --print(count, " Beads == ", (( count / 5 ) * 50), " rep")
+                end
+            end
+        end
+    end
+    return itemRep
+end
 ---------------------------
 -- calculate rep %
 ---------------------------
