@@ -214,7 +214,7 @@ function GetProfessionInfo(id)
     local Professions = { GetProfessions() }
     --print("GetProfessionInfo(", id,")")
     if (id ~= nil and Professions[id] ~= nil) then
-        print("Profession Returned ", Professions[id].Name, " ", Professions[id].Skill, "/", Professions[id].SkillMax)
+        --print("Profession Returned ", Professions[id].Name, " ", Professions[id].Skill, "/", Professions[id].SkillMax)
         return Professions[id].Name, Professions[id].Icon, Professions[id].Skill, Professions[id].SkillMax, 0, 0, 0, 0, 0, 0
     end
     --print("No Profession by ID [", id, "]")
