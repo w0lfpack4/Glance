@@ -32,7 +32,7 @@ local tooltip = gf.Tooltip
 -- variables
 ---------------------------
 spc.Profession = 0
-local maxCap = 700
+local maxCap = 300
 --prof1, prof2, archaeology, fishing, cooking, firstAid
 ga.profID = {
     ["Alchemy"] = {
@@ -120,7 +120,7 @@ ga.ProfessionWarnings = {
 	["Apprentice"] = 50,
 	["Journeyman"] = 125,
 	["Expert"] = 200, -- all (first aid +25???)
-	["Artisan"] = 275,
+	["Artisan"] = maxCap or 275,
 }
 -- racial buffs
 ga.Racial = {
@@ -366,11 +366,15 @@ function gf.Professions.getProfessionInfo(id)
 			racial = ga.Racial[name][2]
 		end
 	end
-	local pLevel = ga.ProfessionCaps[maxSkillLevel-racial] or "Unknown"
+    local pLevel = ga.ProfessionCaps[maxSkillLevel-racial] or "Unknown"
 	local tLevel = ga.ProfessionWarnings[pLevel] or 10000
+    if (id == 5) then -- First Aid
+        tLevel = tLevel + 25
+    end
+    --print("Prof: ",name," (", pLevel, ") ", skillLevel, "(",tLevel,")/", maxSkillLevel)
 	local HEXcolor, RGBcolor = HEX.green, "GRN"
 	local warning = false
-	if skillLevel < maxCap then --not capped
+    if skillLevel < maxCap then --not capped
 		if skillLevel >= tLevel and skillLevel <= maxSkillLevel then -- between training level and maxskill learned
 			HEXcolor = HEX.orange; RGBcolor = "ORA"; warning = true;
 		elseif skillLevel == maxSkillLevel then -- at maxskill learned, can't go further
@@ -411,19 +415,19 @@ Glance.Data.Mining = {
 	{"Small Thorium",245,"Blasted Lands, Burning Steppes, Eastern Plaguelands, Felwood, Feralas, Searing Gorge, Silithus, Tanaris, The Hinterlands, Un'Goro Crater, Western Plaguelands, Winterspring"},
 	{"Rich Thorium",275,"Azshara, Burning Steppes, Eastern Plaguelands, Un'Goro Crater, Western Plaguelands, Winterspring"},
 	{"Fel Iron",300,"Hellfire Peninsula, Zangarmarsh, Terokkar Forest, Nagrand, Blade's Edge Mountains, Netherstorm, Shadowmoon Valley"},
-	{"Adamantite",325,"Zangarmarsh, Terokkar Forest, Nagrand, Blade's Edge Mountains, Netherstorm, Shadowmoon Valley, and Dungeons"},
-	{"Rich Adamantite",350,"Terokkar Forest, Nagrand, Blade's Edge Mountains, Netherstorm, Shadowmoon Valley, and Dungeons"},
-	{"Cobalt",350,"Howling Fjord, Zul'Drak, Borean Tundra, Dragonblight, Grizzly Hills, and Crystalsong Forest"},
-	{"Rich Cobalte",375,"Howling Fjord, Zul'Drak, Borean Tundra, Dragonblight, Grizzly Hills"},
-	{"Saronite",400,"Sholazar Basin, Zul'Drak"},
-	{"Obsidium",425,"Mount Hyjal,Vashj'ir"},
-	{"Elementium",475,"Twilight Highlands"},
-	{"Rich Elementium",500,"Twilight Highlands"},
-	{"Pyrite",525,"Twilight Highlands"},
-	{"Ghost Iron",525,"The Jade Forest, Valley of the Four Winds, Townlong Steppes, Kun-Lai Summit"},
-	{"Rich Ghost Iron",550,"Valley of the Four Winds"},
-	{"Trillium",575,"Kun-Lai Summit, Townlong Steppes, Dreaded Wastes, Vale of Eternal Blossoms"},
-	{"Blackrock Ore or True Iron Ore",600,"Lunarfall, Frostwall"},
+	-- {"Adamantite",325,"Zangarmarsh, Terokkar Forest, Nagrand, Blade's Edge Mountains, Netherstorm, Shadowmoon Valley, and Dungeons"},
+	-- {"Rich Adamantite",350,"Terokkar Forest, Nagrand, Blade's Edge Mountains, Netherstorm, Shadowmoon Valley, and Dungeons"},
+	-- {"Cobalt",350,"Howling Fjord, Zul'Drak, Borean Tundra, Dragonblight, Grizzly Hills, and Crystalsong Forest"},
+	-- {"Rich Cobalte",375,"Howling Fjord, Zul'Drak, Borean Tundra, Dragonblight, Grizzly Hills"},
+	-- {"Saronite",400,"Sholazar Basin, Zul'Drak"},
+	-- {"Obsidium",425,"Mount Hyjal,Vashj'ir"},
+	-- {"Elementium",475,"Twilight Highlands"},
+	-- {"Rich Elementium",500,"Twilight Highlands"},
+	-- {"Pyrite",525,"Twilight Highlands"},
+	-- {"Ghost Iron",525,"The Jade Forest, Valley of the Four Winds, Townlong Steppes, Kun-Lai Summit"},
+	-- {"Rich Ghost Iron",550,"Valley of the Four Winds"},
+	-- {"Trillium",575,"Kun-Lai Summit, Townlong Steppes, Dreaded Wastes, Vale of Eternal Blossoms"},
+	-- {"Blackrock Ore or True Iron Ore",600,"Lunarfall, Frostwall"},
 }
 
 ---------------------------
@@ -458,28 +462,28 @@ Glance.Data.Herbalism = {
 	{"Plaguebloom",285,"Eastern Plaguelands, Felwood, Western Plaguelands"},
 	{"Icecap",290,"Winterspring"},
 	{"Black Lotus",300,"Burning Steppes, Eastern Plaguelands, Silithus, Winterspring"},
-	{"Felweed",300,"Hellfire Peninsula, Zangarmarsh, Nagrand, Blade's Edge Mountains, Terokkar Forest, Shadowmoon Valley, Netherstorm"},
-	{"Dreaming Glory",315,"Hellfire Peninsula, Zangarmarsh, Nagrand, Blade's Edge Mountains, Terokkar Forest, Shadowmoon Valley, Netherstorm"},
-	{"Terocone",325,"Terokkar Forest, Shadowmoon Valley"},
-	{"Ragveil",325,"Zangarmarsh"},
-	{"Flame Cap",335,"Zangarmarsh"},
-	{"Ancient Lichen",340,"Dungeons Only"},
-	{"Netherbloom",350,"Netherstorm"},
-	{"Nightmare Vine",365,"Shadowmoon Valley"},
-	{"Mana Thistle",375,"Nagrand, Blade's Edge Mountains, Terokkar Forest, Shadowmoon Valley, Netherstorm"},
-	{"Tiger Lily",400,"Borean Tundra, Grizzly Hills, Howling Fjord, Sholazar Basin, Zul'Drak"},
-	{"Cinderbloom",425,"Mount Hyjal"},
-	{"Adder's Tongue",430,"Sholazar Basin"},
-	{"Azshara's Veil",450,"Mount Hyjal"},
-	{"Heartblossom",475,"Deepholm"},
-	{"Whiptail",500,"Uldum"},
-	{"Green Tea Leaf",500,"Jade Forest, Valley of the Four Winds, Krasarang Wilds, Kun-Lai Summit"},
-	{"Rain Poppy",525,"Jade Forest"},
-	{"Silkweed",545,"Valley of the Four Winds"},
-	{"Golden Lotus",550,"The Jade Forest, Valley of the Four Winds, Kun-Lai Summit"},
-	{"Snow Lily",575,"Kun-Lai Summit"},
-	{"Fool's Cap",585,"Dread Wastes, Townlong Steppes, The Jade Forest"},
-	{"Frostweed",600,"Frostfire Ridge, Shadowmoon Valley, Spires of Arak"},
+	-- {"Felweed",300,"Hellfire Peninsula, Zangarmarsh, Nagrand, Blade's Edge Mountains, Terokkar Forest, Shadowmoon Valley, Netherstorm"},
+	-- {"Dreaming Glory",315,"Hellfire Peninsula, Zangarmarsh, Nagrand, Blade's Edge Mountains, Terokkar Forest, Shadowmoon Valley, Netherstorm"},
+	-- {"Terocone",325,"Terokkar Forest, Shadowmoon Valley"},
+	-- {"Ragveil",325,"Zangarmarsh"},
+	-- {"Flame Cap",335,"Zangarmarsh"},
+	-- {"Ancient Lichen",340,"Dungeons Only"},
+	-- {"Netherbloom",350,"Netherstorm"},
+	-- {"Nightmare Vine",365,"Shadowmoon Valley"},
+	-- {"Mana Thistle",375,"Nagrand, Blade's Edge Mountains, Terokkar Forest, Shadowmoon Valley, Netherstorm"},
+	-- {"Tiger Lily",400,"Borean Tundra, Grizzly Hills, Howling Fjord, Sholazar Basin, Zul'Drak"},
+	-- {"Cinderbloom",425,"Mount Hyjal"},
+	-- {"Adder's Tongue",430,"Sholazar Basin"},
+	-- {"Azshara's Veil",450,"Mount Hyjal"},
+	-- {"Heartblossom",475,"Deepholm"},
+	-- {"Whiptail",500,"Uldum"},
+	-- {"Green Tea Leaf",500,"Jade Forest, Valley of the Four Winds, Krasarang Wilds, Kun-Lai Summit"},
+	-- {"Rain Poppy",525,"Jade Forest"},
+	-- {"Silkweed",545,"Valley of the Four Winds"},
+	-- {"Golden Lotus",550,"The Jade Forest, Valley of the Four Winds, Kun-Lai Summit"},
+	-- {"Snow Lily",575,"Kun-Lai Summit"},
+	-- {"Fool's Cap",585,"Dread Wastes, Townlong Steppes, The Jade Forest"},
+	-- {"Frostweed",600,"Frostfire Ridge, Shadowmoon Valley, Spires of Arak"},
 }
 
 ---------------------------
