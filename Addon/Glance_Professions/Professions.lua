@@ -53,7 +53,7 @@ ga.profID = {
     },
     ["Herbalism"] = {
         ["ID"] = 0,
-        ["spellID"] = nil,
+        ["spellID"] = 2383,
     },
     ["Inscription"] = {
         ["ID"] = 0,
@@ -65,15 +65,15 @@ ga.profID = {
     },
     ["Leatherworking"] = {
         ["ID"] = 0,
-        ["spellID"] = nil,
+        ["spellID"] = 8617,
     },
     ["Mining"] = {
         ["ID"] = 0,
-        ["spellID"] = nil,
+        ["spellID"] = 2580,
     },
     ["Skinning"] = {
         ["ID"] = 0,
-        ["spellID"] = nil,
+        ["spellID"] = 8617,
     },
     ["Tailoring"] = {
         ["ID"] = 0,
@@ -90,6 +90,10 @@ ga.profID = {
     ["First Aid"] = {
         ["ID"] = 5,
         ["spellID"] = 3274,
+    },
+    ["Lockpicking"] = {
+        ["ID"] = 6,
+        ["spellID"] = 1804,
     },
     -- [171] = 604, -- Alchemy
     -- [164] = 590, -- Blacksmithing
@@ -108,7 +112,8 @@ ga.Professions = {
     [2] = nil,
     [3] = nil, --fishing
     [4] = nil, --cooking
-    [5] = nil --first aid
+    [5] = nil, --first aid
+    [6] = nil --lockpicking
 }
 ga.ProfessionCaps = { -- add 75 to each level
 	[75]  = "Apprentice",
@@ -153,7 +158,17 @@ function GetProfessions()
     --         end
     --     end
     -- end
-    local Professions = ga.Professions
+    local Professions = unpack(ga.Professions)
+    if (Professions == nil) then
+        Professions = {
+            [1] = nil,
+            [2] = nil,
+            [3] = nil, --fishing
+            [4] = nil, --cooking
+            [5] = nil, --first aid
+            [6] = nil --lockpicking
+        }
+    end
     local numSkills = GetNumSkillLines()
     for i=1, numSkills do
         local skillName, _, _, curRank, _, _, maxRank = GetSkillLineInfo(i)
@@ -176,7 +191,7 @@ function GetProfessions()
                 --print("Profession Inserted [", ga.profID[skillName].ID,"]: ", skillName, " ", curRank, "/", maxRank)
             else
                 -- handle listed profession
-                --print("Profession Updated [", ga.profID[skillName].ID,"]: ", skillName, " ", curRank, "/", maxRank)
+                --print("Profession Updated [", ga.profID[skillName].ID,"]: ", skillName, " ", curRank, "/", maxRank, "; ICON: ", icon)
                 Professions[ga.profID[skillName].ID] = { ["Name"] = skillName, ["Icon"] = icon, ["Skill"] = curRank, ["SkillMax"] = maxRank }
             end
         end
@@ -206,16 +221,17 @@ function GetProfessions()
     --         end
     --     end
     -- end
-    return Professions[1], Professions[2], Professions[3], Professions[4], Professions[5]
+    return Professions[1], Professions[2], Professions[3], Professions[4], Professions[5], Professions[6]
 end
 
 function GetProfessionInfo(id)
     --name, icon, skillLevel, maxSkillLevel, numAbilities, spelloffset, skillLine, skillModifier, specializationIndex, specializationOffset
-    local Professions = { GetProfessions() }
+    --local Professions = { GetProfessions() }
+    --local Professions = unpack(ga.Professions)
     --print("GetProfessionInfo(", id,")")
-    if (id ~= nil and Professions[id] ~= nil) then
+    if (id ~= nil and ga.Professions[id] ~= nil) then
         --print("Profession Returned ", Professions[id].Name, " ", Professions[id].Skill, "/", Professions[id].SkillMax)
-        return Professions[id].Name, Professions[id].Icon, Professions[id].Skill, Professions[id].SkillMax, 0, 0, 0, 0, 0, 0
+        return ga.Professions[id].Name, ga.Professions[id].Icon, ga.Professions[id].Skill, ga.Professions[id].SkillMax, 0, 0, 0, 0, 0, 0
     end
     --print("No Profession by ID [", id, "]")
     return nil, nil, nil, nil, nil, nil, nil, nil, nil, nil
@@ -227,7 +243,8 @@ function gf.Professions.update(self, event, arg1)
 	if btn.enabled and gv.loaded then -- loaded keeps it from launching when defined
 		Glance.Debug("function","update","Professions")
         ga.Professions = { GetProfessions() }
-		if spc.Profession ~= 0 then
+        if spc.Profession ~= 0 then
+            if (gf.Professions.getProfessionInfo(spc.Profession) == nil) then return; end
 			local name, icon, skillLevel, maxSkillLevel, pLevel, racial, HEXcolor, RGBcolor, warning, skillMod = unpack(gf.Professions.getProfessionInfo(spc.Profession))
 			if maxSkillLevel ~= nil then 
 				local title = name..": "
@@ -249,7 +266,7 @@ function gf.Professions.update(self, event, arg1)
 		end
 		btn.button:SetWidth(btn.button:GetTextWidth())
 		local p = false
-		for i=1,5 do
+		for i=1,6 do
 			if ga.Professions[i] ~= nil then
 				p = true
 			end
@@ -267,9 +284,9 @@ function gf.Professions.tooltip()
 	gf.Professions.update()
 	local gather, bWarning
 	local Hcolor, Rcolor = HEX.green, "GRN"
-	for i=1,5 do
+	for i=1,6 do
         --print("Scanning [",i,"]")
-        if ga.Professions[i].Name ~= nil then
+        if ga.Professions[i] ~= nil and ga.Professions[i].Name ~= nil then
             --print("Info[",i,"]: ", ga.Professions[i].Name, " - ", ga.Professions[i].Icon)
             local tmp = gf.Professions.getProfessionInfo(i)
             if (tmp ~= nil) then
@@ -294,6 +311,8 @@ function gf.Professions.tooltip()
                 --print("Error obtaining information on ",ga.Professions[i].Name)
                 --tooltip.Double(gf.is(icon,"tooltip").." "..ga.Professions[i].Name..": "..HEX.red.."(?)?/?","WHT")
             end
+        else
+            --print("Error obtaining information on ",i)
 		end
 	end
 	if bWarning then
@@ -339,7 +358,7 @@ function gf.Professions.menu(level,UIDROPDOWNMENU_MENU_VALUE)
 	end
 	if (level == 2) then
 		if gf.isMenuValue("tracking") then
-			for i=1,5 do
+			for i=1,6 do
 				if ga.Professions[i] ~= nil then
 					local name, icon, skillLevel, maxSkillLevel,_,_,_,skillMod = GetProfessionInfo(i)
 					gf.setMenuOption(spc.Profession == ga.Professions[i],name,name,level,function() spc.Profession = i; gf.Professions.update() end,icon)
@@ -357,7 +376,7 @@ end
 -- profession info and colors
 ---------------------------
 function gf.Professions.getProfessionInfo(id)
-	local racial = 0
+    local racial = 0
 	local name, icon, skillLevel, maxSkillLevel,_,_,_,skillMod = GetProfessionInfo(id)		
 	if maxSkillLevel == nil then spc.Profession = 0; gf.Professions.update(); return end
 	-- racial buffs
@@ -378,8 +397,8 @@ function gf.Professions.getProfessionInfo(id)
 		if skillLevel >= tLevel and skillLevel <= maxSkillLevel then -- between training level and maxskill learned
 			HEXcolor = HEX.orange; RGBcolor = "ORA"; warning = true;
 		elseif skillLevel == maxSkillLevel then -- at maxskill learned, can't go further
-			HEXcolor = HEX.red; RGBcolor = "RED"; warning = true ;
-		end		
+            HEXcolor = HEX.red; RGBcolor = "RED"; warning = true ;
+		end
 	end
 	return { name, icon, skillLevel, maxSkillLevel, pLevel, racial, HEXcolor, RGBcolor, warning, skillMod }
 end
