@@ -842,7 +842,7 @@ function GetAverageItemLevel()
 	else
 		eItemLevel = math.floor(eItemLevel/#ga.slotItems)
     end
-    print("Average Item Level: ",eItemLevel)
+    --print("Average Item Level: ",eItemLevel)
     return eItemLevel, eItemLevel
 end
 

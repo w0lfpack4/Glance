@@ -125,7 +125,7 @@ function gf.Quests.update(self, event, arg1)
         if (event ~= nil) then
             if (arg1 == nil) then
                 if spc.debug then
-                    print("Log: "..event.." - Empty Update")
+                    --print("Log: "..event.." - Empty Update")
                 end
             end
         end
@@ -140,7 +140,7 @@ function gf.Quests.update(self, event, arg1)
             --local isInArea, isOnMap, numObjectives1 = GetTaskInfo(arg1)
             local numObjectives = tonumber(GetNumQuestLeaderBoards(arg1))
             if spc.debug then
-                print("QUEST [", arg1,"]", title, ": ", numObjectives, isComplete, questID)
+                --print("QUEST [", arg1,"]", title, ": ", numObjectives, isComplete, questID)
             end
             local i=0
             for i=0,numObjectives do
@@ -151,14 +151,14 @@ function gf.Quests.update(self, event, arg1)
                     break
                 else
                     if spc.debug then
-                        print("OBJ ", c, ": Completed")
+                        --print("OBJ ", c, ": Completed")
                     end
                 end
             end
             --print("QUEST_WATCH_UPDATE: ",title, isComplete)
             if done and spc.playSound then
                 if spc.debug then
-                    print("QUEST [", arg1,"]", title, ": Completed")
+                    --print("QUEST [", arg1,"]", title, ": Completed")
                 end
                 PlaySoundFile("Interface\\AddOns\\Glance_Quests\\Sfx\\QuestComplete.ogg", "Master")
             end
@@ -171,7 +171,7 @@ function gf.Quests.update(self, event, arg1)
             --local isInArea, isOnMap, numObjectives1 = GetTaskInfo(arg1)
             local numObjectives = tonumber(GetNumQuestLeaderBoards(arg1))
             if spc.debug then
-                print("QUEST [", arg1,"]", title, ": ", numObjectives, isComplete, questID)
+                --print("QUEST [", arg1,"]", title, ": ", numObjectives, isComplete, questID)
             end
             local i=0
             for i=0,numObjectives do
@@ -182,14 +182,14 @@ function gf.Quests.update(self, event, arg1)
                     break
                 else
                     if spc.debug then
-                        print("OBJ ", c, ": Completed")
+                        --print("OBJ ", c, ": Completed")
                     end
                 end
             end
             --print("QUEST_WATCH_UPDATE: ",title, isComplete)
             if done and spc.playSound then
                 if spc.debug then
-                    print("QUEST [", arg1,"]", title, ": Completed")
+                    --print("QUEST [", arg1,"]", title, ": Completed")
                 end
                 PlaySoundFile("Interface\\AddOns\\Glance_Quests\\Sfx\\QuestComplete.ogg", "Master")
             end
@@ -219,7 +219,7 @@ function gf.Quests.update(self, event, arg1)
         if event == "QUEST_COMPLETE" and spc.autoComplete then
             numChoices = GetNumQuestChoices()
             if spc.debug then
-                print(numChoices.." Quest Rewards")
+                --print(numChoices.." Quest Rewards")
             end
             if numChoices == 0 then
                 GetQuestReward();

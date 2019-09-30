@@ -655,9 +655,9 @@ function gf.addonQuery(module)
 	local GetNumPartyMembers, _ = GetNumSubgroupMembers()
 	if (GetNumPartyMembers ~= 0 or gv.Debug) and Glance_Local.Options.sendStats and gv.messageCheck then
 		if gv.Debug then
-			SendAddonMessage("Glance", module.."^query^0", "WHISPER", UnitName("player"))
+			--SendAddonMessage("Glance", module.."^query^0", "WHISPER", UnitName("player"))
 		else
-			SendAddonMessage("Glance", module.."^query^0", "PARTY") -- sending a request for module data with a query header
+			--SendAddonMessage("Glance", module.."^query^0", "PARTY") -- sending a request for module data with a query header
 		end
 		gv.messageCheck = false
 	end
@@ -675,9 +675,9 @@ function gf.addonResponse(prefix, message, channel, sender)
 			if which == "query" then -- query for information from party member
 				local msg = gf[module].Message(data,sender) -- the data to send back based on the module
 				if gv.Debug then
-					SendAddonMessage("Glance",module.."^response^"..msg, "WHISPER", UnitName("Player"))
+					--SendAddonMessage("Glance",module.."^response^"..msg, "WHISPER", UnitName("Player"))
 				else
-					SendAddonMessage("Glance",module.."^response^"..msg, "PARTY") -- sending the data about the module with a response header
+					--SendAddonMessage("Glance",module.."^response^"..msg, "PARTY") -- sending the data about the module with a response header
 				end
 			elseif which == "response" then -- response with data from party member
 				for i=1, GetNumPartyMembers do					
