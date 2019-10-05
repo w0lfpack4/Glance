@@ -304,7 +304,7 @@ function gf.Professions.tooltip()
                 else
                     tooltip.Double(gf.is(icon,"tooltip").." "..name..": "..HEX.lightblue.."("..pLevel..")", skillLevel.."/"..maxSkillLevel, "WHT",RGBcolor)
                 end
-                if name=="Mining" or name=="Herbalism" then
+                if spc.Profession == i and (name=="Mining" or name=="Herbalism" or name=="Lockpicking") then
                     gather = gf.Professions.getGatherArea(name,skillLevel)
                 end
             else
@@ -409,6 +409,7 @@ end
 function gf.Professions.getGatherArea(prof,skill)
 	local name = "mining"
 	if prof == "Herbalism" then name = "gathering" end
+	if prof == "Lockpicking" then name = "picking from" end
 	if skill < maxCap then -- off when maxed
 		for i=#gd[prof],1,-1 do
 			local ore, lvl, loc = unpack(gd[prof][i])
@@ -503,6 +504,17 @@ Glance.Data.Herbalism = {
 	-- {"Snow Lily",575,"Kun-Lai Summit"},
 	-- {"Fool's Cap",585,"Dread Wastes, Townlong Steppes, The Jade Forest"},
 	-- {"Frostweed",600,"Frostfire Ridge, Shadowmoon Valley, Spires of Arak"},
+}
+---------------------------
+-- lockpicking
+---------------------------
+Glance.Data.Lockpicking = {
+    {"1-75",1,"Heavy Bronze Lockbox[25]; Battered Footlocker[70]; Iron Lockbox[70]; The Merchant Coast, The Barrens; Mills in Redridge Mountains"},
+    {"75-150",75," Battered Footlocker[110];Strong Iron Lockbox[125]; Sludge Fen, The Barrens; Southeast Westfall"},
+    {"150-175",150,"Waterlogged Footlocker[150]; Battered Footlocker[165]; Gnomeregan Workshop Door[150]"},
+    {"175-200",175,"Scarlet Monestary Doors"},
+    {"200-250",200,"Thorium Lockbox; Eternium Lockbox; Mithril Lockbox; Reinforced Steel Lockbox; The Slag Pit, Searing Gorge"},
+    {"250-300",250,"Blackrock Depths Gates"},
 }
 
 ---------------------------

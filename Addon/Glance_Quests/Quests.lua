@@ -75,7 +75,13 @@ AI:Hide()
 ---------------------------
 function gf.Quests.getQuestStatus()
     local numEntries, numQuests = GetNumQuestLogEntries();
-    return HEX.yellow .. numQuests .. HEX.white .. "/" .. HEX.green .. 20
+    local color = HEX.green
+    if (numQuests == 20) then
+        color = HEX.red
+    elseif (numQuests >= 15) then
+        color = HEX.orange
+    end
+    return color .. numQuests .. HEX.white .. "/" .. color .. 20
 end
 ---------------------------
 -- onload
