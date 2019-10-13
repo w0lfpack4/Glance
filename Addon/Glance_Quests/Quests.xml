@@ -1,0 +1,9 @@
+<Ui ...>
+  <Frame ...>
+    ...
+    <Scripts>
+      <OnLoad>self.TimeSinceLastUpdate = 0 </OnLoad>
+      <OnUpdate function="OnUpdate" />      
+    </Scripts>			
+  </Frame>
+</Ui>

@@ -14,7 +14,8 @@ gf.AddButton("Quests","LEFT")
 local btn = gb.Quests
 btn.text			  	= "Quests"
 btn.enabled		   		= true
-btn.events				= {"QUEST_ACCEPTED", "QUEST_AUTOCOMPLETE", "QUEST_COMPLETE", "QUEST_DETAIL", "QUEST_LOG_UPDATE", "QUEST_REMOVED", "QUEST_TURNED_IN", "QUEST_WATCH_LIST_CHANGED", "QUEST_WATCH_UPDATE", "TASK_PROGRESS_UPDATE", "QUEST_ACCEPT_CONFIRM", "QUEST_FINISHED", "QUEST_GREETING",  "QUEST_ITEM_UPDATE", "QUEST_PROGRESS"}
+--btn.events				= {"QUEST_WATCH_UPDATE", "QUEST_LOG_UPDATE", "QUEST_DETAIL", "QUEST_ACCEPTED", "QUEST_AUTOCOMPLETE", "QUEST_COMPLETE", "QUEST_REMOVED", "QUEST_TURNED_IN", "QUEST_WATCH_LIST_CHANGED", "TASK_PROGRESS_UPDATE", "QUEST_ACCEPT_CONFIRM", "QUEST_FINISHED", "QUEST_GREETING",  "QUEST_ITEM_UPDATE", "QUEST_PROGRESS"}
+btn.events				= {"QUEST_WATCH_UPDATE", "UNIT_QUEST_LOG_CHANGED", "QUEST_DETAIL", "QUEST_PROGRESS", "QUEST_COMPLETE", "SOUNDKIT_FINISHED"}
 btn.texture.scan1       = "Interface\\AddOns\\Glance_Quests\\scan1.tga"
 btn.texture.scan2       = "Interface\\AddOns\\Glance_Quests\\scan2.tga"
 btn.onload              = true
@@ -22,7 +23,7 @@ btn.update				= true
 btn.tooltip		   		= true
 btn.menu			  	= true
 btn.click				= true
-btn.save.perCharacter 	= {["autoAccept"] = true,["autoComplete"] = true,["playSound"] = true,["debug"] = true}
+btn.save.perCharacter 	= {["autoAccept"] = true,["autoComplete"] = true,["playSound"] = true,["debug"] = false}
 btn.save.perAccount 	= {["showIL"] = true,["showCharacterOverlay"] = true,["showInspectOverlay"] = true,["showTooltipOverlay"] = true}
 btn.save.allowProfile 	= true
 
@@ -43,6 +44,8 @@ gf.Quests.Log = {}
 gf.Quests.Debug = ""
 gv.data = {}
 gv.complete = 0
+gv.elapsed = 0
+gv.playSound = false
 
 ---------------------------
 -- arrays
@@ -116,18 +119,74 @@ function gf.Quests.onload()
 			end
 		end);
 		-- set the player overlay data
-		gf.Quests.getQuestStatus()
+        gf.Quests.getQuestStatus()
+        gf.Quests.UpdateQuestLog()
 		loaded = true
 	end
 end
-	
+
+function gf.Quests.UpdateQuestLog()
+    --ga.questLog = {}
+    gv.complete = 0
+    for qid, quest in pairs(ga.questLog) do
+        ga.questLog[qid].inLog = false
+    end
+    local i = 1
+	while GetQuestLogTitle(i) do
+        local title, level, suggestedGroup, isHeader, isCollapsed, isComplete, frequency, TQid = GetQuestLogTitle(i)
+        if isHeader ~= true then
+            --title, level, suggestedGroup, isHeader, isCollapsed, isComplete, frequency, questID, startEvent, displayQuestID, isOnMap, hasLocalPOI, isTask, isStory = GetQuestLogTitle(arg1);
+                
+            --local isInArea, isOnMap, numObjectives1 = GetTaskInfo(arg1)
+            local numObjectives = tonumber(GetNumQuestLeaderBoards(i))
+
+            if (ga.questLog[TQid] == nil) then
+                ga.questLog[TQid] = { ["id"] = questID, ["Completed"] = false, ["Objectives"] = numObjectives }
+            end
+            ga.questLog[TQid].logID = i
+            ga.questLog[TQid].inLog = true
+            
+            if spc.debug then
+                print("QUEST ", i, ": (", numObjectives, ")")
+            end
+            local done = true
+            local o=1
+            for o=1,numObjectives do
+                --local c, oType, finished = GetQuestObjectiveInfo(arg1, i, false)
+                c, otype, finished = GetQuestLogLeaderBoard(o, i)
+                if finished == false then
+                    done = false
+                    break
+                else
+                    if spc.debug then
+                        print("OBJ ", c, ": Completed")
+                    end
+                end
+            end
+            ga.questLog[TQid].Completed = done
+            --print("QUEST_WATCH_UPDATE: ",title, isComplete)
+            if done then
+                gv.complete = gv.complete + 1
+                if spc.debug then
+                    --print("QUEST [", arg1,"]", title, ": Completed")
+                end
+                --PlaySoundFile("Interface\\AddOns\\Glance_Quests\\Sfx\\QuestComplete.ogg", "Master")
+                gv.playSound = true
+            end
+        end
+        i = i + 1
+    end
+    for qid, quest in pairs(ga.questLog) do
+        --ga.questLog[qid].inLog = false
+    end
+end
 ---------------------------
 -- update (event)
 ---------------------------
-function gf.Quests.update(self, event, arg1)
+function gf.Quests.update(self, event, ...)
 	if btn.enabled and gv.loaded then -- loaded keeps it from launching when defined
         Glance.Debug("function","update","Quests")
-
+        local arg1 = ...
         if (event ~= nil) then
             if (arg1 == nil) then
                 if spc.debug then
@@ -138,104 +197,117 @@ function gf.Quests.update(self, event, arg1)
 
         gf.setButtonText(btn.button,"Quests: ",gf.Quests.getQuestStatus(),"","")
         -- Play Sound on Objectives Completed
-        if event == "QUEST_WATCH_UPDATE" then
+        if event == "UNIT_QUEST_LOG_CHANGED" and arg1 ~= nil then
+            local arg1, arg2, arg3, arg4 = ...;
             local questID = GetQuestID()
+            --print("QUEST_LOG_CHANGED: ", arg1, arg2, arg3, arg4)
 
-            title, level, suggestedGroup, isHeader, isCollapsed, isComplete, frequency, questID, startEvent, displayQuestID, isOnMap, hasLocalPOI, isTask, isStory = GetQuestLogTitle(arg1);
-            local done = true
-            --local isInArea, isOnMap, numObjectives1 = GetTaskInfo(arg1)
-            local numObjectives = tonumber(GetNumQuestLeaderBoards(arg1))
-            if spc.debug then
-                --print("QUEST [", arg1,"]", title, ": ", numObjectives, isComplete, questID)
+            if arg1 == "player" then
+                gf.Quests.UpdateQuestLog()
             end
-            local i=0
-            for i=0,numObjectives do
-                --local c, oType, finished = GetQuestObjectiveInfo(arg1, i, false)
-                c, otype, finished = GetQuestLogLeaderBoard(i, arg1)
-                if finished == false then
-                    done = false
-                    break
-                else
-                    if spc.debug then
-                        --print("OBJ ", c, ": Completed")
-                    end
-                end
-            end
-            --print("QUEST_WATCH_UPDATE: ",title, isComplete)
-            if done and spc.playSound then
-                if spc.debug then
-                    --print("QUEST [", arg1,"]", title, ": Completed")
-                end
-                PlaySoundFile("Interface\\AddOns\\Glance_Quests\\Sfx\\QuestComplete.ogg", "Master")
-            end
-        end
-        if event == "QUEST_LOG_UPDATE" and arg1 ~= nil then
-            local questID = GetQuestID()
+            -- title, level, suggestedGroup, isHeader, isCollapsed, isComplete, frequency, questID, startEvent, displayQuestID, isOnMap, hasLocalPOI, isTask, isStory = GetQuestLogTitle(arg1);
+            
+            -- --local isInArea, isOnMap, numObjectives1 = GetTaskInfo(arg1)
+            -- local numObjectives = tonumber(GetNumQuestLeaderBoards(arg1))
 
-            title, level, suggestedGroup, isHeader, isCollapsed, isComplete, frequency, questID, startEvent, displayQuestID, isOnMap, hasLocalPOI, isTask, isStory = GetQuestLogTitle(arg1);
-            local done = true
-            --local isInArea, isOnMap, numObjectives1 = GetTaskInfo(arg1)
-            local numObjectives = tonumber(GetNumQuestLeaderBoards(arg1))
-            if spc.debug then
-                --print("QUEST [", arg1,"]", title, ": ", numObjectives, isComplete, questID)
-            end
-            local i=0
-            for i=0,numObjectives do
-                --local c, oType, finished = GetQuestObjectiveInfo(arg1, i, false)
-                c, otype, finished = GetQuestLogLeaderBoard(i, arg1)
-                if finished == false then
-                    done = false
-                    break
-                else
-                    if spc.debug then
-                        --print("OBJ ", c, ": Completed")
-                    end
-                end
-            end
-            --print("QUEST_WATCH_UPDATE: ",title, isComplete)
-            if done and spc.playSound then
-                if spc.debug then
-                    --print("QUEST [", arg1,"]", title, ": Completed")
-                end
-                PlaySoundFile("Interface\\AddOns\\Glance_Quests\\Sfx\\QuestComplete.ogg", "Master")
-            end
+            -- if ga.questLog[arg1] == nil then
+            --     ga.questLog[arg1] = { ["id"] = questID, ["Completed"] = false, ["Objectives"] = numObjectives, ["playSound"] = false }
+            -- end
+            -- if spc.debug then
+            --     --print("QUEST [", arg1,"]", title, ": ", numObjectives, isComplete, questID)
+            -- end
+
+            -- local done = true
+            -- local i=0
+            -- for i=0,numObjectives do
+            --     --local c, oType, finished = GetQuestObjectiveInfo(arg1, i, false)
+            --     c, otype, finished = GetQuestLogLeaderBoard(i, arg1)
+            --     if finished == false then
+            --         done = false
+            --         ga.questLog[arg1].Completed = false
+            --         break
+            --     else
+            --         if spc.debug then
+            --             --print("OBJ ", c, ": Completed")
+            --         end
+            --     end
+            -- end
+            -- ga.questLog[arg1].Completed = done
+            -- --print("QUEST_WATCH_UPDATE: ",title, isComplete)
+            -- if done then
+            --     if spc.debug then
+            --         --print("QUEST [", arg1,"]", title, ": Completed")
+            --     end
+            --     --PlaySoundFile("Interface\\AddOns\\Glance_Quests\\Sfx\\QuestComplete.ogg", "Master")
+            --     ga.questLog[arg1].playSound = true
+            -- end
         end
         -- Accept Quest
         if event == "QUEST_DETAIL" and spc.autoAccept then
             AcceptQuest()
         end
-        -- Accept Escort
-        if event == "QUEST_ACCEPT_CONFRIM" and spc.autoAccept then
-            --ConfirmAcceptQuest()
-        end
-
-        -- Talk to NPC (More than 1 Quest)
-        if event == "QUEST_GREETING" then
-            --CompleteQuest()
-        end
-        -- Continue to Completion
-        if event == "QUEST_ACCEPT_CONFIRM" then
-            --CompleteQuest()
-            --if ( IsQuestCompletable() ) then QuestFrameCompleteButton:Enable(); end
-        end
         if event == "QUEST_PROGRESS" and spc.autoComplete then
+            if (IsControlKeyDown()) then
+                return
+            end
             CompleteQuest()
         end
         -- Quest Reward Dialog Reached
         if event == "QUEST_COMPLETE" and spc.autoComplete then
-            numChoices = GetNumQuestChoices()
-            if spc.debug then
-                --print(numChoices.." Quest Rewards")
+            if (IsControlKeyDown()) then
+                return
             end
+            numChoices = GetNumQuestChoices()
             if numChoices == 0 then
                 GetQuestReward();
             end
         end
-        -- Closed Menu
-        if event == "QUEST_FINISHED" and spc.autoComplete then
+        if event == "QUEST_GREETING" and spc.autoAccept then
+            if (IsControlKeyDown()) then
+                return
+            end
+            local numAvailableQuests = 0;
+            local numActiveQuests = 0;
+            local lastActiveQuest = 0
+            local lastAvailableQuest = 0;
+            numAvailableQuests = GetNumAvailableQuests();
+            numActiveQuests = GetNumActiveQuests();
+            if numAvailableQuests > 0 or numActiveQuests > 0 then
+                local guid = UnitGUID("target");
+                if lastNPC ~= guid then
+                    lastActiveQuest = 1;
+                    lastAvailableQuest = 1;
+                    lastNPC = guid;
+                end
+                if (lastAvailableQuest > numAvailableQuests) then
+                    lastAvailableQuest = 1;
+                end    
+                for i = lastAvailableQuest, numAvailableQuests do
+                    lastAvailableQuest = i;
+                    if (not IsControlKeyDown()) then
+                        SelectAvailableQuest(i);
+                    end
+                end
+            end
+            if lastActiveQuest > numActiveQuests then
+                lastActiveQuest = 1;
+            end
+            local CLi
+            for CLi = 1, numActiveQuests do
+                for CL_index,CL_value in pairs(AAPClassic.QuestList) do
+                    --if (GetActiveTitle(CLi) == AAPClassic.QuestList[CL_index]["title"] and AAPClassic.QuestList[CL_index]["isComplete"] == 1) then
+                        SelectActiveQuest(CLi)
+                    --end
+                end
+            end
         end
-        if event == "QUEST_QUERY_COMPLETE" and spc.autoComplete then
-            gv.complete = arg1
+        if event == "SOUNDKIT_FINISHED" then
+            if gv.playSound then
+                gv.playSound = false
+                if spc.playSound then
+                    PlaySoundFile("Interface\\AddOns\\Glance_Quests\\Sfx\\QuestComplete.ogg", "Master")
+                end
+            end
         end
 	end
 end
