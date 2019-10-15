@@ -23,7 +23,7 @@ btn.update				= true
 btn.tooltip		   		= true
 btn.menu			  	= true
 btn.click				= true
-btn.save.perCharacter 	= {["autoAccept"] = true,["autoComplete"] = true,["playSound"] = true,["debug"] = false}
+btn.save.perCharacter 	= {["autoAccept"] = true,["autoComplete"] = true,["playSound"] = true,["debug"] = false, ["questLog"] = {}}
 btn.save.perAccount 	= {["showIL"] = true,["showCharacterOverlay"] = true,["showInspectOverlay"] = true,["showTooltipOverlay"] = true}
 btn.save.allowProfile 	= true
 
@@ -50,8 +50,6 @@ gv.playSound = false
 ---------------------------
 -- arrays
 ---------------------------
-ga.questLog = {
-}
 
 ---------------------------
 -- tooltips for parsing
@@ -126,11 +124,17 @@ function gf.Quests.onload()
 end
 
 function gf.Quests.UpdateQuestLog()
-    --ga.questLog = {}
-    gv.complete = 0
-    for qid, quest in pairs(ga.questLog) do
-        ga.questLog[qid].inLog = false
+    -- If First Update, and Has Quest Logs, Skip SFX
+    local firstUpdate = true
+    if #spc.questLog > 0 then
+        firstUpdate = false
     end
+    gv.complete = 0
+    -- Clear inLog values
+    for qid, quest in pairs(spc.questLog) do
+        spc.questLog[qid].inLog = false
+    end
+    -- Scan all Quest Log entries
     local i = 1
 	while GetQuestLogTitle(i) do
         local title, level, suggestedGroup, isHeader, isCollapsed, isComplete, frequency, TQid = GetQuestLogTitle(i)
@@ -140,15 +144,16 @@ function gf.Quests.UpdateQuestLog()
             --local isInArea, isOnMap, numObjectives1 = GetTaskInfo(arg1)
             local numObjectives = tonumber(GetNumQuestLeaderBoards(i))
 
-            if (ga.questLog[TQid] == nil) then
-                ga.questLog[TQid] = { ["id"] = questID, ["Completed"] = false, ["Objectives"] = numObjectives }
+            if (spc.questLog[TQid] == nil) then
+                spc.questLog[TQid] = { ["id"] = questID, ["Completed"] = false, ["Objectives"] = numObjectives }
             end
-            ga.questLog[TQid].logID = i
-            ga.questLog[TQid].inLog = true
+            spc.questLog[TQid].logID = i
+            spc.questLog[TQid].inLog = true
             
             if spc.debug then
-                print("QUEST ", i, ": (", numObjectives, ")")
+                --print("QUEST ", i, ": (", numObjectives, ")")
             end
+            -- Scan all objectives of the Quest
             local done = true
             local o=1
             for o=1,numObjectives do
@@ -159,25 +164,37 @@ function gf.Quests.UpdateQuestLog()
                     break
                 else
                     if spc.debug then
-                        print("OBJ ", c, ": Completed")
+                        --print("OBJ ", c, ": Completed")
                     end
                 end
             end
-            ga.questLog[TQid].Completed = done
-            --print("QUEST_WATCH_UPDATE: ",title, isComplete)
             if done then
                 gv.complete = gv.complete + 1
                 if spc.debug then
                     --print("QUEST [", arg1,"]", title, ": Completed")
                 end
-                --PlaySoundFile("Interface\\AddOns\\Glance_Quests\\Sfx\\QuestComplete.ogg", "Master")
-                gv.playSound = true
+                -- If wasn't completed last check
+                if spc.questLog[TQid].Completed == false then
+                    gv.playSound = true
+                end
             end
+            spc.questLog[TQid].Completed = done
+            --print("QUEST_WATCH_UPDATE: ",title, isComplete)
         end
         i = i + 1
     end
-    for qid, quest in pairs(ga.questLog) do
-        --ga.questLog[qid].inLog = false
+    -- Remove old quest logs
+    for qid, quest in pairs(spc.questLog) do
+        if spc.questLog[qid].inLog == false then
+            spc.questLog[qid] = nil
+        end
+    end
+    
+    if gv.playSound then
+        gv.playSound = false
+        if spc.playSound and firstUpdate == false then
+            PlaySoundFile("Interface\\AddOns\\Glance_Quests\\Sfx\\QuestComplete.ogg", "Master")
+        end
     end
 end
 ---------------------------
@@ -210,8 +227,8 @@ function gf.Quests.update(self, event, ...)
             -- --local isInArea, isOnMap, numObjectives1 = GetTaskInfo(arg1)
             -- local numObjectives = tonumber(GetNumQuestLeaderBoards(arg1))
 
-            -- if ga.questLog[arg1] == nil then
-            --     ga.questLog[arg1] = { ["id"] = questID, ["Completed"] = false, ["Objectives"] = numObjectives, ["playSound"] = false }
+            -- if spc.questLog[arg1] == nil then
+            --     spc.questLog[arg1] = { ["id"] = questID, ["Completed"] = false, ["Objectives"] = numObjectives, ["playSound"] = false }
             -- end
             -- if spc.debug then
             --     --print("QUEST [", arg1,"]", title, ": ", numObjectives, isComplete, questID)
@@ -224,7 +241,7 @@ function gf.Quests.update(self, event, ...)
             --     c, otype, finished = GetQuestLogLeaderBoard(i, arg1)
             --     if finished == false then
             --         done = false
-            --         ga.questLog[arg1].Completed = false
+            --         spc.questLog[arg1].Completed = false
             --         break
             --     else
             --         if spc.debug then
@@ -232,14 +249,14 @@ function gf.Quests.update(self, event, ...)
             --         end
             --     end
             -- end
-            -- ga.questLog[arg1].Completed = done
+            -- spc.questLog[arg1].Completed = done
             -- --print("QUEST_WATCH_UPDATE: ",title, isComplete)
             -- if done then
             --     if spc.debug then
             --         --print("QUEST [", arg1,"]", title, ": Completed")
             --     end
             --     --PlaySoundFile("Interface\\AddOns\\Glance_Quests\\Sfx\\QuestComplete.ogg", "Master")
-            --     ga.questLog[arg1].playSound = true
+            --     spc.questLog[arg1].playSound = true
             -- end
         end
         -- Accept Quest
@@ -302,6 +319,9 @@ function gf.Quests.update(self, event, ...)
             end
         end
         if event == "SOUNDKIT_FINISHED" then
+            if spc.debug then
+                print("Soundkit Finished")
+            end
             if gv.playSound then
                 gv.playSound = false
                 if spc.playSound then
