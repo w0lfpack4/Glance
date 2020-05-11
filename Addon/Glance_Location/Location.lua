@@ -35,7 +35,10 @@ local name, subName
 function gf.Location.update()
 	if btn.enabled and gv.loaded then -- loaded keeps it from launching when defined
 		--if WorldMapFrame:IsVisible() == nil then
-			local unitx, unity = GetPlayerMapPosition("player")
+		
+			local map = C_Map.GetBestMapForUnit("player");
+			local p = nil
+			if (map) then p = C_Map.GetPlayerMapPosition(map,"player") end
 			local sep, display
 			local s = ((GetUnitSpeed("Player") / 7) * 100);
 			local speed = string.format("%d",s)
@@ -45,7 +48,7 @@ function gf.Location.update()
 				name, subName = GetZoneText(), GetSubZoneText()
 			end
 			name = HEX.darkblue..name
-			subName = HEX.lightblue..subName
+			if (subName ~= "") then subName = HEX.lightblue..subName else subName=nil end
 			sep = "|r- "
 			display = ""
 			if GetUnitSpeed("Player") ~= 0 and spa.DisplaySpeed then
@@ -57,17 +60,17 @@ function gf.Location.update()
 			if spa.DisplayZone then
 				display = display..name.." "
 			end
-			if spa.DisplaySubZone and subName ~= "" then
+			if spa.DisplaySubZone and subName then
 				if spa.DisplayZone then
 					display = display..sep
 				end
 				display = display..subName.." "
 			end
-			if spa.DisplayCoords then
+			if spa.DisplayCoords and p then
 				if spa.DisplayCoordsPlus then
-					display = display..string.format(HEX.lightblue.."("..HEX.white.."%.2f, %.2f"..HEX.lightblue..")", (unitx * 100), (unity * 100)) 
+					display = display..string.format(HEX.lightblue.."("..HEX.white.."%.2f, %.2f"..HEX.lightblue..")", (p.x * 100), (p.y * 100)) 
 				else
-					display = display..string.format(HEX.lightblue.."("..HEX.white.."%d, %d"..HEX.lightblue..")", (unitx * 100), (unity * 100)) 
+					display = display..string.format(HEX.lightblue.."("..HEX.white.."%d, %d"..HEX.lightblue..")", (p.x * 100), (p.y * 100)) 
 				end
 			end
 			btn.button:SetText(display)
@@ -81,12 +84,14 @@ end
 ---------------------------
 function gf.Location.tooltip()
 	Glance.Debug("function","tooltip","Location")
-	local unitx, unity = GetPlayerMapPosition("player")
+	local map = C_Map.GetBestMapForUnit("player");
+	local p = nil
+	if (map) then p = C_Map.GetPlayerMapPosition(map,"player") end
 	local speed, groundSpeed, flightSpeed, swimSpeed = GetUnitSpeed("Player")
 	tooltip.Title("Location","GLD")
 	tooltip.Double("Zone: ", name, "WHT","GRN")
-	tooltip.Double("SubZone: ", subName, "WHT","GRN")
-	tooltip.Double("Coordinates: ", string.format("(%.2f, %.2f)",(unitx * 100),(unity * 100)), "WHT","GRN")		
+	if (subName) then tooltip.Double("SubZone: ", subName, "WHT","GRN") end
+	if (p) then	tooltip.Double("Coordinates: ", string.format("(%.2f, %.2f)",(p.x * 100),(p.y * 100)), "WHT","GRN")	end
 	tooltip.Space()
 	tooltip.Line("Speed", "GLD")
 	tooltip.Double("Ground Speed", gf.Location.formatSpeed(groundSpeed).."%","WHT","GRN")

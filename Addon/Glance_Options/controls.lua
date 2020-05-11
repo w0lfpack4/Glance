@@ -285,13 +285,13 @@ function gf.createSwatch(name,panel,frameColorIdx,h,w,x,y)
 	swatch:SetPoint("TOPLEFT", _G[panel], "TOPLEFT", x, y)
 	local r,g,b,a = unpack(Glance_Global.Options.frameColor[frameColorIdx])
 	local tb = swatch:CreateTexture("s1tb", "BORDER")
-	tb:SetTexture(1,1,1,1)
+	tb:SetColorTexture(1,1,1,1)
 	tb:SetHeight(h)
 	tb:SetWidth(w)
 	tb:SetAllPoints(swatch)
 	
 	local ta = swatch:CreateTexture(nil, "ARTWORK")
-	ta:SetTexture(r,g,b,1)
+	ta:SetColorTexture(r,g,b,1)
 	ta:SetHeight(h-2)
 	ta:SetWidth(w-2)
 	ta:SetPoint("TOPLEFT", tb, "TOPLEFT", 1, -1)
@@ -329,7 +329,7 @@ function gf.ColorPickerCancel(restore)
 	if restore == nil then restore = gv.swatch.RGBA end
 	if restore then -- cancel
 		r,g,b,a = unpack(restore);
-		_G[gv.swatch.Name].texture:SetTexture(r, g, b, 1)
+		_G[gv.swatch.Name].texture:SetColorTexture(r, g, b, 1)
 		Glance_Global.Options.frameColor[gv.swatch.ColorIndex] = {r, g, b, a}
 		--if gv.swatch.ColorIndex == 3 then
 			gf.setBackground(1)
@@ -345,7 +345,7 @@ end
 function gf.ColorPickerOkay()
 	local r,g,b,a;
 	a,r,g,b = OpacitySliderFrame:GetValue(), ColorPickerFrame:GetColorRGB();
-	_G[gv.swatch.Name].texture:SetTexture(r, g, b, 1)
+	_G[gv.swatch.Name].texture:SetColorTexture(r, g, b, 1)
 	Glance_Global.Options.frameColor[gv.swatch.ColorIndex] = {r, g, b, a}
 	gf.setBackground(1)
 end
@@ -356,7 +356,7 @@ end
 function gf.ColorPickerUpdate()
 	local r,g,b,a;
 	a,r,g,b = OpacitySliderFrame:GetValue(), ColorPickerFrame:GetColorRGB();
-	_G[gv.swatch.Name].texture:SetTexture(r, g, b, 1)
+	_G[gv.swatch.Name].texture:SetColorTexture(r, g, b, 1)
 	Glance_Global.Options.frameColor[gv.swatch.ColorIndex] = {r, g, b, a}
 	gf.setBackground(gv.swatch.ColorIndex)
 end

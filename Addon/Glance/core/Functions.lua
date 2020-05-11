@@ -74,23 +74,6 @@ function gf.CheckDuplicates()
 			table.remove(gv.button.order.RIGHT, i)
 		end
 	end
-	--bug fix for positioning
-	if Glance_Local["Wintergrasp"] ~= nil then Glance_Local["Wintergrasp"] = nil end
-	if Glance_Global["Wintergrasp"] ~= nil then Glance_Global["Wintergrasp"] = nil end
-	if Glance_Profile.button ~= nil then
-		for i=1, #Glance_Profile.button.order.LEFT do
-			if Glance_Profile.button.order.LEFT[i] == "Wintergrasp" then
-				gf.sendMSG("Erroneous entry found in profile. The problem is now fixed.")
-				gf.tableRemoveByVal(Glance_Profile.button.order.LEFT, "Wintergrasp")
-			end
-		end
-		for i=1, #Glance_Profile.button.order.RIGHT do
-			if Glance_Profile.button.order.RIGHT[i] == "Wintergrasp" then
-				gf.sendMSG("Erroneous entry found in profile. The problem is now fixed.")
-				gf.tableRemoveByVal(Glance_Profile.button.order.RIGHT, "Wintergrasp")
-			end
-		end
-	end
 	gf.saveButtonOrder()
 end
 
@@ -160,6 +143,8 @@ function gf.showTooltip(which)
 		Glance.Debug("function","showtooltip",which)
 		GameTooltip:ClearLines()
 		GameTooltip:ClearAllPoints()
+		gf.Tooltip.hasOptions = nil
+		gf.Tooltip.hasNotes = nil
 		if Glance_Local.Options.showLow then
 			GameTooltip:SetOwner(gb[which].button,"ANCHOR_TOPLEFT")
 		else
@@ -167,6 +152,10 @@ function gf.showTooltip(which)
 			GameTooltip:SetPoint("TOPLEFT", gb[which].button, "BOTTOMLEFT", 0, 0)
 		end
 		gf[which].tooltip()
+		if not IsShiftKeyDown() and (gf.Tooltip.hasOptions or gf.Tooltip.hasNotes) then
+			gf.Tooltip.Space()
+			gf.Tooltip.Line("(Hold Shift for help)","YEL")
+		end
 		if Glance_Local.Options.scaleTooltip then
 			GameTooltip:SetScale(Glance_Local.Options.frameScale)
 		end
@@ -201,6 +190,8 @@ end
 -- tooltip Options list
 ---------------------------
 function gf.Tooltip.Options(tbl)
+	gf.Tooltip.hasOptions = true
+	if not IsShiftKeyDown() then return end
 	gf.Tooltip.Space()
 	gf.Tooltip.Line("Options", "GLD")
 	for i=1,#tbl do
@@ -225,6 +216,8 @@ end
 -- tooltip notes
 ---------------------------
 function gf.Tooltip.Notes(left,shiftLeft,right,shiftRight,other)
+	gf.Tooltip.hasNotes = true
+	if not IsShiftKeyDown() then return end
 	gf.Tooltip.Space()
 	gf.Tooltip.Line("Notes", "GLD")
 	if left then gf.Tooltip.Line("(Click to "..left..".)","WHT") end
@@ -350,13 +343,13 @@ function gf.setBackground(n)
 	if n==1 or n==2 or n==4 then
 		local t = Glance.Frames.topFrame.texture
 		local r,g,b,a = unpack(Glance_Global.Options.frameColor[n])
-		t:SetTexture(r, g, b, a)
+		t:SetColorTexture(r, g, b, a)
 		--t:SetTexture("Interface\\AddOns\\Glance\\Skins\\eye.tga",true);
 		--t:SetTexture("Interface\\FrameGeneral\\UI-Background-Rock",true);
 	end
 	local t2 = _G["GlanceBorder"]
 	r,g,b,a = unpack(Glance_Global.Options.frameColor[3])
-	t2:SetTexture(r,g,b,a)
+	t2:SetColorTexture(r,g,b,a)
 end
 
 ---------------------------
@@ -483,6 +476,7 @@ function gf.formatTime(s)
 	ts, count = string.gsub(ts,"Hr","h")
 	ts, count = string.gsub(ts,"Min","m")
 	ts, count = string.gsub(ts,"Sec","s")
+	ts, count = string.gsub(ts,"ss","s")
 	local a,b,c,d,e,f,g,h = strsplit(" ", ts) --gsub won't remove the spaces for whatever reason
 	local tsnew = ""
 	if a ~= nil and b ~= nil then tsnew = tsnew.." "..a..b end
@@ -655,9 +649,9 @@ function gf.addonQuery(module)
 	local GetNumPartyMembers, _ = GetNumSubgroupMembers()
 	if (GetNumPartyMembers ~= 0 or gv.Debug) and Glance_Local.Options.sendStats and gv.messageCheck then
 		if gv.Debug then
-			SendAddonMessage("Glance", module.."^query^0", "WHISPER", UnitName("player"))
+			C_ChatInfo.SendAddonMessage("Glance", module.."^query^0", "WHISPER", UnitName("player"))
 		else
-			SendAddonMessage("Glance", module.."^query^0", "PARTY") -- sending a request for module data with a query header
+			C_ChatInfo.SendAddonMessage("Glance", module.."^query^0", "PARTY") -- sending a request for module data with a query header
 		end
 		gv.messageCheck = false
 	end
@@ -675,9 +669,9 @@ function gf.addonResponse(prefix, message, channel, sender)
 			if which == "query" then -- query for information from party member
 				local msg = gf[module].Message(data,sender) -- the data to send back based on the module
 				if gv.Debug then
-					SendAddonMessage("Glance",module.."^response^"..msg, "WHISPER", UnitName("Player"))
+					C_ChatInfo.SendAddonMessage("Glance",module.."^response^"..msg, "WHISPER", UnitName("Player"))
 				else
-					SendAddonMessage("Glance",module.."^response^"..msg, "PARTY") -- sending the data about the module with a response header
+					C_ChatInfo.SendAddonMessage("Glance",module.."^response^"..msg, "PARTY") -- sending the data about the module with a response header
 				end
 			elseif which == "response" then -- response with data from party member
 				for i=1, GetNumPartyMembers do					
@@ -699,7 +693,7 @@ function gf.addonResponse(prefix, message, channel, sender)
 						gv.party.a[module] = data
 					end
 				end
-				gf.showTooltip(module)
+				if GameTooltip:IsShown() and GameTooltip:IsOwned(gb[module].button) then gf.showTooltip(module) end
 			end
 		end
 	end

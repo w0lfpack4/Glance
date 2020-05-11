@@ -1,11 +1,11 @@
-## Interface: 60200
+## Interface: 80300
 ## Title: |cff0279ffGlance: |cffffffffMemory|r
 ## X-DisplayName: Memory
 ## Notes: Load on Demand Data Broker for Glance
-## Author: Keg
-## Version: 6.2.0.1
+## Author: vonbek
+## Version: 8.3.0.1
+## X-Updated: 05/11/2020
 ## X-Category: Broker
-## X-Updated: November 15, 2014
 ## X-Description: Displays real-time memory usage of your addons.  Tooltip renders live data to display addon activity. Click to free up some memory.
 ## X-new: 
 

@@ -13,7 +13,7 @@ gf.AddButton("Emblems","LEFT")
 local btn = gb.Emblems
 btn.text              = "Emblems"
 btn.enabled           = true
-btn.events            = {"HONOR_CURRENCY_UPDATE", "KNOWN_CURRENCY_TYPES_UPDATE", "LFG_COMPLETION_REWARD", "PLAYER_MONEY"}
+btn.events            = {"CURRENCY_DISPLAY_UPDATE","LFG_COMPLETION_REWARD", "PLAYER_MONEY"}
 btn.update            = true
 btn.tooltip           = true
 btn.click             = true

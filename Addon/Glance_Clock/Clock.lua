@@ -67,7 +67,7 @@ function gf.Clock.tooltip()
 	}
 	tooltip.Options(tbl)
 	--(left,shift-left,right,shift-right,other)
-	tooltip.Notes("open the calendar",nil,"switch display",nil,nil)
+	tooltip.Notes(nil,nil,"switch display",nil,nil)
 end
 
 ---------------------------
@@ -76,7 +76,7 @@ end
 function gf.Clock.click(self, button, down)
 	Glance.Debug("function","click","Clock")
 	if (button == "LeftButton") then 
-		ToggleCalendar()
+		--ToggleCalendar()
 	end
 end
 

@@ -73,7 +73,7 @@ function gf.Reputation.update(self, event, arg1)
 		local title, rep, color = "Rep: ", nil, nil
 		for factionIndex=1,GetNumFactions() do
 			if select(12,GetFactionInfo(factionIndex)) then	--isWatched
-				local id, name, clr, standing, minVal, maxVal, currentVal, percentVal, remainingVal, isWatched, isHeader  = unpack(gf.Reputation.getFactionInfo(factionIndex))	
+				local id, name, color, standing, minVal, maxVal, currentVal, percentVal, remainingVal, isWatched, isHeader  = unpack(gf.Reputation.getFactionInfo(factionIndex))	
 				rep = gf.getCondition(spc.DisplayReputation == "Percent",percentVal,remainingVal); color = clr;
 			end
 		end		
@@ -98,25 +98,6 @@ function gf.Reputation.tooltip()
 			tooltip.Double("Percent Earned",color..percentVal,"WHT","GRN")
 			tooltip.Double("Points Remaining",color..remainingVal,"WHT","GRN")
 			hasWatch = true
-			if isHeader and select(11,GetFactionInfo(factionIndex)) then -- header and hasRep means friends
-				hasFriends = true
-			end
-		end
-		if hasFriends then
-			local isFriend = true
-			for loop=1, #ga.standing.l do
-				if standing == ga.standing.l[loop] then
-					isFriend = false -- standing matches standard list, not a friend.
-				end
-			end
-			if isFriend and not isHeader then
-				if not printedHeader then --only show if rep actually has friends..
-					tooltip.Space()
-					tooltip.Line("Friends","GLD")
-					printedHeader = true
-				end
-				tooltip.Double(name.." ("..color..standing.."|r)",color..val.." |r("..id.."/6)","WHT","WHT")
-			end
 		end
 		if spc.TrackList[name] then
 			showMultiple = true
@@ -132,14 +113,7 @@ function gf.Reputation.tooltip()
 				local id, name, color, standing, minVal, maxVal, currentVal, percentVal, remainingVal, isWatched, isHeader  = unpack(gf.Reputation.getFactionInfo(factionIndex))	
 				if spc.TrackList[name] then			
 					local val = gf.getCondition(spc.DisplayReputation == "Percent",percentVal,remainingVal)
-					local isFriend = true
-					for loop=1, #ga.standing.l do
-						if standing == ga.standing.l[loop] then
-							isFriend = false -- standing matches standard list, not a friend.
-						end
-					end
-					local friendStat = gf.getCondition(isFriend," |r("..id.."/6)","")
-					tooltip.Double(name.." ("..color..standing.."|r)",color..val..friendStat,"WHT","WHT")
+					tooltip.Double(name.." ("..color..standing.."|r)",color..val,"WHT","WHT")
 				end
 			end
 		end
@@ -226,26 +200,18 @@ end
 -- get faction info
 ---------------------------
 function gf.Reputation.getFactionInfo(factionIndex)
-	local name, _, standingID, barMin, barMax, barValue, _, _, isHeader, _, _, isWatched, _, factionID, _, _ = GetFactionInfo(factionIndex)
+	local name, description, standingID, barMin, barMax, barValue, atWarWith, canToggleAtWar, isHeader, isCollapsed, hasRep, isWatched, isChild = GetFactionInfo(factionIndex)
+	return {standingID, name, fsColor, fsText, barMin, barMax, barValue, fsPercent, fsRemaining, isWatched, isHeader}
+end
+function gf.Reputation.getFactionInfo(factionIndex)
+	local name, _, standingID, barMin, barMax, barValue, _, _, isHeader, _, _, isWatched, _ = GetFactionInfo(factionIndex)
 	local fsText, fsColor, fsPercent, fsRemaining;
-	local friendID, friendRep, _, _, _, _, friendTextLevel, friendThreshold, nextFriendThreshold = GetFriendshipReputation(factionID);
-	if (friendID ~= nil) then
-		if ( nextFriendThreshold ) then
-			barMin, barMax, barValue = friendThreshold, nextFriendThreshold, friendRep;
-		else
-			barMin, barMax, barValue = 0, 1, 1;
-		end
-		fsText = friendTextLevel;
-		fsColor = ga.standing.fc[standingID];
-	else
-		fsText = ga.standing.l[standingID];
-		fsColor = ga.standing.c[standingID];
-	end	
+	fsText = ga.standing.l[standingID];
+	fsColor = ga.standing.c[standingID];
 	fsPercent = gf.Reputation.calculate(barMin,barValue,barMax)
 	fsRemaining = barMax - barValue
 	return {standingID, name, fsColor, fsText, barMin, barMax, barValue, fsPercent, fsRemaining, isWatched, isHeader}
 end
-
 ---------------------------
 -- calculate rep %
 ---------------------------

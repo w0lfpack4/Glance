@@ -1,13 +1,13 @@
-## Interface: 60200
+## Interface: 80300
 ## Title: |cff0279ffGlance: |cffffffffFriends|r
 ## X-DisplayName: Friends
 ## Notes: Load on Demand Data Broker for Glance
-## Author: Keg
-## Version: 6.2.0.1
+## Author: vonbek
+## Version: 8.3.0.1
+## X-Updated: 05/11/2020
 ## X-Category: Broker
-## X-Updated: November 15, 2014
 ## X-Description: Displays the number of friends and Real-ID friends online, their class, level, and zone.
-## X-new: 
+## X-new: Updated friends display, limited list to 20
 
 ## Dependencies: Glance
 ## LoadOnDemand: 1
