@@ -18,7 +18,7 @@ btn.texture.normal    = "Interface\\AddOns\\Glance_Titles\\title.tga"
 btn.update            = true
 btn.tooltip           = true
 btn.menu              = true
-btn.events            = {"PLAYER_TITLE_ID_CHANGED"}
+btn.events            = {"KNOWN_TITLES_UPDATE"}
 
 ---------------------------
 -- shortcuts
@@ -95,16 +95,44 @@ function gf.Titles.formatTitle(id)
 	local titlename, title, player, class = GetTitleName(id), "", UnitName("player"), UnitClass("player"):upper()
 	player = CLS[class]..player
 	if not titlename then return player.." |rof no title" end
-	if titlename:sub(1, 1) == " " then
-		if titlename:find("Jenkins") == nil and titlename:sub(2, 3) ~= "of" and titlename:sub(2, 4) ~= "the" then
-			title = player.."|r,"..titlename
+	if gf.Titles.nameGoesFirst(titlename) then
+		if gf.Titles.nameNeedsComma(titlename) then
+			title = player..", |r"..titlename
 		else			
-			title = player.."|r"..titlename
+			title = player.." |r"..titlename
 		end
 	else
-		title = titlename..player
+		title = titlename.." "..player
 	end
 	return title
+end
+
+---------------------------
+-- determine name position
+---------------------------
+function gf.Titles.nameGoesFirst(t)
+	local firstChar = t:sub(1, 1)
+	local r = t:reverse() -- t:sub(t:len(),1) wasn't working, so reverse it.
+	local lastChar = r:sub(1, 1)
+	if t:find("Jenkins") or t:sub(1, 2) == "of" or t:sub(1, 3) == "the" or t:sub(1, 1) == " " or string.match(firstChar, '%u') then
+		if lastChar == " " then 
+			return false
+		else
+			return true
+		end
+	end
+	return false
+end
+
+---------------------------
+-- determine comma
+---------------------------
+function gf.Titles.nameNeedsComma(t)
+	local firstChar = t:sub(1, 1)
+	if string.match(firstChar, '%u') then
+		return true
+	end
+	return false
 end
 
 ---------------------------

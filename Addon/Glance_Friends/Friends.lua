@@ -29,12 +29,20 @@ local tooltip = gf.Tooltip
 -- arrays
 ---------------------------
 ga.Clients = {
-	["WoW"] = "WoW",
-	["D3"] = "Diablo III",
-	["S2"] = "StarCraft II",
-	["HS"] = "Hearthstone",
+	["WoW"]  = "WoW",
+	["D3"]   = "Diablo III",
+	["S2"]   = "StarCraft II",
+	["HS"]   = "Hearthstone",
 	["WTCG"] = "Hearthstone",	
-	["App"] = "Launcher",
+	["App"]  = "Launcher",
+	["BSAp"] = "Mobile App",
+	["Hero"] = "Heroes of the Storm",
+	["Pro"]  = "Overwatch",
+	["S1"]   = "StarCraft: Remastered",
+	["DST2"] = "Destiny 2",
+	["VIPR"] = "CoD: Black Ops 4",
+	["ODIN"] = "CoD: Modern Warfare",
+	["W3"]   = "Warcraft III",
 }
 
 ---------------------------
@@ -43,9 +51,11 @@ ga.Clients = {
 function gf.Friends.update()
 	if btn.enabled and gv.loaded then -- loaded keeps it from launching when defined
 		Glance.Debug("function","update","Friends")
-		local _,WoWFriends = GetNumFriends()
-		local _,RealFriends = BNGetNumFriends()
-		gf.setButtonText(btn.button,"Friends: ",WoWFriends..","..RealFriends,nil,nil)
+		local totalWoW = C_FriendList.GetNumFriends()
+		local onlineWoW = C_FriendList.GetNumOnlineFriends()
+		local totalBliz, onlineBliz = BNGetNumFriends()
+		local total, online = (totalWoW+totalBliz), (onlineWoW+onlineBliz)
+		gf.setButtonText(btn.button,"Friends: ",online,nil,nil)
 	end
 end
 
@@ -54,43 +64,99 @@ end
 ---------------------------
 function gf.Friends.tooltip()
 	Glance.Debug("function","tooltip","Friends")
-	local _,WoWFriends = GetNumFriends()
-	local _,RealFriends = BNGetNumFriends()
+
+	local totalWoW, onlineWoW = C_FriendList.GetNumFriends(), C_FriendList.GetNumOnlineFriends()
+	local totalBliz, onlineBliz = BNGetNumFriends()
+	local total, online = (totalWoW+totalBliz), (onlineWoW+onlineBliz)
+	local friends = {}
 	
-	-- Friends
-	tooltip.Double(WoWFriends.." Friend(s) Online","Location","GLD","GLD")
-	for i = 0, GetNumFriends() do
-		local name, level, class, area, connected, status, note = GetFriendInfo(i)
-		if connected then
-			local msg1, msg2 = unpack(gf.Friends.formatFriend(name, level, race, class, area))
-			tooltip.Double(msg1, msg2, "WHT", "LBL")
+	-- WoW Friends
+	for i = 0, totalWoW do
+		local f = C_FriendList.GetFriendInfoByIndex(i)
+		if f and f.connected then
+			table.insert(friends, {f.name, f.level, f.className, f.area, f.dnd, f.afk})
 		end
-	end
-	-- BNET Friends under friends
-	for j = 1, RealFriends do
-		local presenceID, presenceName,_,_,toon,toonID,client,isOnline,_ = BNGetFriendInfo(j)
-		local _, toonName, _, realmName, _, _, race, class, _, zoneName, level, gameText, _ = BNGetToonInfo(toonID or presenceID)
-		if isOnline then
-			client = ga.Clients[client] or client			
-			if string.upper(client) == "WOW" then			
-				local msg1, msg2 = unpack(gf.Friends.formatFriend(toonName, level, race, class, zoneName))
-				tooltip.Double(HEX.lightblue.."BN: |r"..msg1, msg2, "WHT", "LBL")
+	end	
+	
+	-- Blizzard Friends (on WoW)
+	for i = 1, onlineBliz do
+		local bnetIDAccount, accountName, battleTag, isBattleTagPresence, _, _, _, _, _, isAFK, isDND, broadcastText, noteText = BNGetFriendInfo(i)
+		for j=1, BNGetNumFriendGameAccounts(i) do
+			local location
+			local hasFocus, toonName, client, realmName, realmID, faction, race, class, _, zoneName, level, gameText, _, _, _, bnetIDGameAccount = BNGetFriendGameAccountInfo(i, j)
+			if( client == _G.BNET_CLIENT_WOW ) then
+				if zoneName and zoneName ~= "" then
+					if realmName and realmName ~= "" and realmName ~= playerRealmName then
+						location = zoneName.." - "..realmName
+					else
+						location = zoneName
+					end
+				else
+					location = realmName
+				end
+				table.insert(friends, {toonName, level, class, location, isDND, isAFK})
 			end
 		end
 	end
-	
-	--BNET IDS
-	tooltip.Space()
-	tooltip.Double(RealFriends.." BattleNet Friend(s) Online","Character","GLD","GLD")
-	for j = 1, RealFriends do
-		local presenceID, presenceName,_,_,toon,toonID,client,isOnline,_ = BNGetFriendInfo(j)
-		local _, toonName, _, realmName, _, _, race, class, _, zoneName, level, gameText, _ = BNGetToonInfo(toonID or presenceID)
-		if isOnline then
-			local msg1, msg2 = unpack(gf.Friends.formatBNET(presenceName, client, realmName, toonName))
-			tooltip.Double(msg1, msg2, "WHT", "LBL")
+
+	-- Display friends
+	tooltip.Double("WoW Friends: ",onlineWoW.."/"..totalWoW, "GLD", "GLD")
+	if #friends == 0 then
+		if totalWoW == 0 then
+			tooltip.Line("You have no friends.  Go be social!","WHT")
+		else
+			tooltip.Line("No one is online.","WHT")
 		end
 	end
-	--(left,shift-left,right,shift-right,other)
+	table.sort(friends, function(a, b) return a[1] < b[1] end)
+	local count = 1
+	for k, v in pairs(friends) do
+		local name, realm = strsplit("-", v[1])
+		local level, class, zone, busy, away = v[2], string.upper(v[3]), v[4], v[5], ""
+		if away then status = "  |r"..HEX.red.."[Away]|r" end
+		if busy then status = "  |r"..HEX.red.."[Busy]|r" end
+		if zone == GetZoneText() then zone = HEX.green..zone else zone = HEX.gray..zone end
+		tooltip.Double(level.." |r"..CLS[string.upper(v[3])]..name..status, zone, "WHT", "LBL")
+		count = count + 1
+		if count > 20 then 
+			local howManyMore = (#friends-20)
+			if howManyMore > 0 then
+				tooltip.Line("|rand "..howManyMore.." more..", "WHT")
+			end
+		end
+	end
+	wipe(friends)
+
+	-- Blizzard Friends
+	tooltip.Space()
+	tooltip.Double("BattleNet Friends",onlineBliz.."/"..totalBliz,"GLD","GLD")
+	for i = 1, onlineBliz do
+		local bnetIDAccount, accountName, battleTag, isBattleTagPresence, _, _, _, _, _, isAFK, isDND, broadcastText, noteText = BNGetFriendInfo(i)
+		for j=1, BNGetNumFriendGameAccounts(i) do
+			local hasFocus, toonName, client, realmName, realmID, faction, race, class, _, zoneName, level, gameText, _, _, _, bnetIDGameAccount = BNGetFriendGameAccountInfo(i, j)
+			local status = ""
+			if isAFK then status = "  |r"..HEX.red.."[Away]|r" end
+			if isDND then status = "  |r"..HEX.red.."[Busy]|r" end
+			if client ~= "App" and client ~= "BSAp" then
+				clientName = gameText or ga.Clients[client]
+				friends[accountName] = {clientName, status}
+			else
+				if not isAFK and not isDND then status = " |r"..HEX.red.."[Away]|r" end
+				if not friends[accountName] then
+					friends[accountName] = {"IRL", status}
+				end
+			end
+		end
+	end
+	for k,v in pairs(friends) do
+		local color = "GLD"
+		if v[1] == "IRL" then color = "GRY" end
+		if v[1] == "WoW" or v[1] == "WoW Classic" then color = "GRN" end
+		tooltip.Double(k..v[2], v[1], "LBL", color)
+	end
+	wipe(friends)
+	
+	--(left,shift-left,right,shift-right,other)	
 	tooltip.Notes("open the Friends tab",nil,nil,nil,nil)
 end
 
@@ -100,88 +166,8 @@ end
 function gf.Friends.click(self, button, down)
 	Glance.Debug("function","click","Friends")
 	if button == "LeftButton" then
-		ToggleFriendsFrame() --removed the value "1" from being passed to fix bug.
+		ToggleFriendsFrame(1) --removed the value "1" from being passed to fix bug.
 	end
-end
-
----------------------------
--- tired of concatenation errors
----------------------------
-function gf.Friends.bp(str,val)
-	if not str then
-		str = ""
-	end
-	if val then
-		str = str..tostring(val)
-	end
-	return str
-end
-
----------------------------
--- format friends
----------------------------
-function gf.Friends.formatFriend(name, level, race, class, area)
-	local color, msg1, msg2 = "","",""
-	if class then 
-		local clss= string.upper(class) or "PRIEST"
-		color = CLS[clss]
-		msg1 = gf.Friends.bp(msg1,color)
-	end
-	if name then
-		msg1 = gf.Friends.bp(msg1,name)
-		if level ~= nil and level ~= "" then
-			msg1 = gf.Friends.bp(msg1," |r("..HEX.green)
-			msg1 = gf.Friends.bp(msg1,level)
-			msg1 = gf.Friends.bp(msg1,"|r")
-			if race then 
-				msg1 = gf.Friends.bp(msg1," ")
-				msg1 = gf.Friends.bp(msg1,race)
-			end
-			if class then 
-				msg1 = gf.Friends.bp(msg1," ")
-				msg1 = gf.Friends.bp(msg1, color)
-				msg1 = gf.Friends.bp(msg1,class)
-			end
-			msg1 = gf.Friends.bp(msg1,"|r)")
-		else
-			area = "MIA"
-		end
-		if area then
-			msg2 = gf.Friends.bp(msg2,area)
-		end
-	end
-	return {msg1,msg2}
-end
-
----------------------------
--- format BNET friends
----------------------------
-function gf.Friends.formatBNET(name, client, realm, toon)
-	local msg1, msg2 = "","",""
-	if name then
-		msg1 = gf.Friends.bp(msg1,HEX.lightblue)
-		msg1 = gf.Friends.bp(msg1,name)
-		if client then
-			msg1 = gf.Friends.bp(msg1," |r[")
-			client = ga.Clients[client] or client			
-			if string.upper(client) == "WOW" then	
-				msg1 = gf.Friends.bp(msg1,HEX.green)
-				msg1 = gf.Friends.bp(msg1,client)
-				if realm ~= nil and realm ~= "" then
-					msg1 = gf.Friends.bp(msg1," - ")
-					msg1 = gf.Friends.bp(msg1,realm)
-				end
-			else
-				msg1 = gf.Friends.bp(msg1,HEX.red)
-				msg1 = gf.Friends.bp(msg1,client)
-			end
-			msg1 = gf.Friends.bp(msg1,"|r]")
-		end
-		if toon then
-			msg2 = gf.Friends.bp(msg2,toon)
-		end
-	end
-	return {msg1,msg2}
 end
 
 ---------------------------

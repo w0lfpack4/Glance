@@ -16,8 +16,8 @@ local gd = Glance.Data
 ---------------------------
 StaticPopupDialogs["Glance_RELOADUI"] = {
 	text = "Reload your User Interface?",
-	button1 = TEXT(ACCEPT),
-	button2 = TEXT(CANCEL),
+	button1 = "Accept",
+	button2 = "Cancel",
 	OnAccept = function()
 		ReloadUI()
 	end,
@@ -96,7 +96,7 @@ function gf.saveProfile()
 	end
 	StaticPopupDialogs["Glance_Saved"] = {
 		text = "Your settings have been saved to the profile.",
-		button1 = TEXT(OKAY),
+		button1 = "OK",
 		timeout = 5,
 		hideOnEscape = 1,
 		exclusive = 1,
@@ -128,7 +128,7 @@ function gf.loadProfile()
 	gf.updateAll()
 	StaticPopupDialogs["Glance_Loaded"] = {
 		text = "Your settings have been loaded from the profile.",
-		button1 = TEXT(OKAY),
+		button1 = "OK",
 		timeout = 5,
 		hideOnEscape = 1,
 		exclusive = 1,

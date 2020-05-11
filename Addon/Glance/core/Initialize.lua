@@ -20,7 +20,7 @@ function gf.createButton(anchor,i)
 		v.button = CreateFrame("BUTTON", "Glance_Buttons_"..v.name, Glance.Frames.topFrame)
 		--v.button.texture = v.button:CreateTexture()
 		--v.button.texture:SetAllPoints(v.button)
-		--v.button.texture:SetTexture(1, 1, 1, .7)
+		--v.button.texture:SetColorTexture(1, 1, 1, .7)
 		--v.button.texture:SetGradientAlpha("VERTICAL", 0, 0, 0, .7, .5, .5, .5, .7) 
 		local btn = v.button
 		-- set button height
@@ -367,16 +367,15 @@ function gf.setPreferredOrder()
 		["RIGHT"] = {
 			"Options", -- [1]
 			"Titles", -- [2]
-			"Dungeons", -- [3]
-			"DualSpec", -- [4]
-			"Pets", -- [5]
-			"Mounts", -- [6]
-			"Clock", -- [7]
-			"Location", -- [8]
+			"Mounts", -- [3]
+			"Pets", -- [4]
+			"Respec", -- [5]
+			"Clock", -- [6]
+			"Location", -- [7]
 		},
 		["LEFT"] = {
 			"Gold", -- [1]
-			"Emblems", -- [2]
+			"Emblems", --[2]
 			"Bags", -- [3]
 			"Friends", -- [4]
 			"Guild", -- [5]
@@ -387,8 +386,6 @@ function gf.setPreferredOrder()
 			"Latency", -- [10]
 			"Framerate", -- [11]
 			"Memory", -- [12]
-			"WinterGrasp", -- [13]
-			"TolBarad", -- [14]
 		},
 	}
 end
@@ -695,7 +692,7 @@ function gf.addonLoaded()
 	gf.loadDefaultVariables()
 	gf.setBackground(1)
 	-- needed for comm
-	RegisterAddonMessagePrefix("Glance")
+	C_ChatInfo.RegisterAddonMessagePrefix("Glance")
 	Glance.Frames.topFrame:SetText("modules loaded.  configuring...")
 end
 
@@ -787,6 +784,14 @@ function gf.handleEvents()
 				gf.sendMSG("Total Time Played: "..gf.formatTime(time() - gv.gametime.initTotal))
 				gf.sendMSG("Time Played This Level: "..gf.formatTime(time() - gv.gametime.initLevel))
 				gv.timePlayed = true
+			end
+		--save data
+		elseif (event == "MODIFIER_STATE_CHANGED") then
+			Glance.Debug("event","fired",event)
+			for k, v in pairs(gb) do
+				if GameTooltip:IsShown() and GameTooltip:GetOwner() == gb[k].button then
+					gf.showTooltip(k)
+				end
 			end
 		--save data
 		elseif (event == "PLAYER_LOGOUT") then
@@ -881,18 +886,18 @@ function gf.loadFrame()
 	cf:SetFrameStrata("HIGH")
 	
 	--[[local c = cf:CreateTexture(nil, "BACKGROUND")
-	c:SetTexture(1, 0, 0, .5)
+	c:SetColorTexture(1, 0, 0, .5)
 	c:SetAllPoints(cf)
 	cf.texture = c]]
 	
 	local t = tf:CreateTexture(nil, "BACKGROUND")
-	t:SetTexture(0, 0, 0, .5)
+	t:SetColorTexture(0, 0, 0, .5)
 	--t:SetTexture("Interface\\AddOns\\Glance\Skins\carbonfiber.tga",true); --gf.setBackground(n) overrides this.. go there	
 	t:SetAllPoints(tf)
 	tf.texture = t 	
 	
 	local t2 = tf:CreateTexture("GlanceBorder", "BORDER")
-	t2:SetTexture(.4, .4, .4)
+	t2:SetColorTexture(.4, .4, .4)
 	t2:SetPoint("TOPLEFT", tf, "BOTTOMLEFT", 0, 0)
 	t2:SetPoint("TOPRIGHT", tf, "BOTTOMRIGHT", 0, 0)
 	t2:SetWidth(gv.screenWidth)
@@ -919,19 +924,20 @@ function gf.Initialize()
 	gf.loadFrame()
 	Glance.Frames.topFrame:Show()
 	Glance.Frames.topFrame:RegisterEvent("ADDON_LOADED")
-	Glance.Frames.topFrame:RegisterEvent("TIME_PLAYED_MSG")
-	Glance.Frames.topFrame:RegisterEvent("CHAT_MSG_ADDON")
 	Glance.Frames.topFrame:RegisterEvent("PLAYER_LOGIN")
 	Glance.Frames.topFrame:RegisterEvent("PLAYER_LOGOUT")
+	Glance.Frames.topFrame:RegisterEvent("TIME_PLAYED_MSG")
+	Glance.Frames.topFrame:RegisterEvent("CHAT_MSG_ADDON")
+	Glance.Frames.topFrame:RegisterEvent("MODIFIER_STATE_CHANGED")
 	Glance.Frames.topFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
-	Glance.Frames.topFrame:RegisterEvent("UNIT_ENTERING_VEHICLE")
-	Glance.Frames.topFrame:RegisterEvent("UNIT_EXITING_VEHICLE")
+	if (GetExpansionLevel() > 0)  then Glance.Frames.topFrame:RegisterEvent("UNIT_ENTERING_VEHICLE") end
+	if (GetExpansionLevel() > 0)  then Glance.Frames.topFrame:RegisterEvent("UNIT_EXITING_VEHICLE") end
 	Glance.Frames.topFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
 	Glance.Frames.topFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
 	Glance.Frames.topFrame:RegisterEvent("PLAYER_UPDATE_RESTING")
 	Glance.Frames.topFrame:RegisterEvent("SAVED_VARIABLES_TOO_LARGE")
-	Glance.Frames.topFrame:RegisterEvent("PET_BATTLE_OPENING_START")
-	Glance.Frames.topFrame:RegisterEvent("PET_BATTLE_CLOSE")
+	if (GetExpansionLevel() > 4)  then Glance.Frames.topFrame:RegisterEvent("PET_BATTLE_OPENING_START") end
+	if (GetExpansionLevel() > 4)  then Glance.Frames.topFrame:RegisterEvent("PET_BATTLE_CLOSE") end
 	gf.handleEvents()
 	--Glance.Frames.bottomFrame:Show()
 end

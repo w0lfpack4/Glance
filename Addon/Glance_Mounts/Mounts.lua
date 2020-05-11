@@ -306,7 +306,7 @@ function gf.Mounts.GetNumMounts()
 	local totalCount, charCount, pFaction = 0,0,0
 	if UnitFactionGroup("player") == "Alliance" then pFaction = 1 end
 	for i=1, C_MountJournal.GetNumMounts() do
-		local cName, cSpellID, cIcon, isSummoned, isUsable, sourceType, isFavorite, isFactionSpecific, faction, hideOnChar, isCollected = C_MountJournal.GetMountInfo(i)
+		local cName, cSpellID, cIcon, isSummoned, isUsable, sourceType, isFavorite, isFactionSpecific, faction, hideOnChar, isCollected = C_MountJournal.GetMountInfoByID(i)
 		if (isCollected) then
 			totalCount = totalCount + 1
 		end
@@ -330,7 +330,7 @@ function gf.Mounts.click(self, button, down)
 		if IsMounted() then
 			C_MountJournal.Dismiss()
 		else
-			C_MountJournal.Summon(0)
+			C_MountJournal.SummonByID(0)
 		end
 	else	
 		gf.Mounts.build()
@@ -343,14 +343,14 @@ end
 ---------------------------
 function gf.Mounts.summon(cID)
 	Glance.Debug("function","summon","Mounts")
-	local isUsable = select(5,C_MountJournal.GetMountInfo(cID))
-	local isSummoned = select(4,C_MountJournal.GetMountInfo(cID))
+	local isUsable = select(5,C_MountJournal.GetMountInfoByID(cID))
+	local isSummoned = select(4,C_MountJournal.GetMountInfoByID(cID))
 	if IsIndoors() then isUsable = false end
 	if isSummoned then
 		C_MountJournal.Dismiss(cID)
 	else
 		if isUsable then
-			C_MountJournal.Summon(cID)
+			C_MountJournal.SummonByID(cID)
 		end
 	end
 end
@@ -373,8 +373,8 @@ end
 ---------------------------
 function gf.Mounts.mouseOver(cID, cSpellID, cDisplayID, cName, cDescription)
 	Glance.Debug("function","mouseOver","Mounts")
-	local isUsable = select(5,C_MountJournal.GetMountInfo(cID))
-	local isSummoned = select(4,C_MountJournal.GetMountInfo(cID))
+	local isUsable = select(5,C_MountJournal.GetMountInfoByID(cID))
+	local isSummoned = select(4,C_MountJournal.GetMountInfoByID(cID))
 	local fs = _G["Glance_Mount_Buttons_FontString_"..cSpellID]
 	if IsIndoors() then isUsable = false end
 	-- update the model
@@ -390,8 +390,8 @@ end
 ---------------------------
 function gf.Mounts.mouseOut(cID, cSpellID)
 	Glance.Debug("function","mouseOut","Mounts")
-	local isUsable = select(5,C_MountJournal.GetMountInfo(cID))
-	local isSummoned = select(4,C_MountJournal.GetMountInfo(cID))
+	local isUsable = select(5,C_MountJournal.GetMountInfoByID(cID))
+	local isSummoned = select(4,C_MountJournal.GetMountInfoByID(cID))
 	local fs = _G["Glance_Mount_Buttons_FontString_"..cSpellID]
 	if IsIndoors() then isUsable = false end
 	-- mouseout, turn off the model
@@ -447,45 +447,47 @@ function gf.Mounts.checkForUpdates()
 	if gfrm.mountFrame == nil then return end
 	
 	for i=1, C_MountJournal.GetNumMounts() do
-		local cName, cSpellID, cIcon, isSummoned, isUsable, sourceType, isFavorite, isFactionSpecific, faction, hideOnChar, isCollected = C_MountJournal.GetMountInfo(i)
-		local cDisplayID, cDescription, cSource, isSelfMount, mountFlags = C_MountJournal.GetMountInfoExtra(i)
+		local cName, cSpellID, cIcon, isSummoned, isUsable, sourceType, isFavorite, isFactionSpecific, faction, hideOnChar, isCollected = C_MountJournal.GetMountInfoByID(i)
+		local cDisplayID, cDescription, cSource, isSelfMount, mountFlags = C_MountJournal.GetMountInfoExtraByID(i)
 		
 		-- bliz used to handle this..
 		if IsIndoors() then isUsable = false end
 					
 		-- link to the proper objects
-		local m_btn = _G["Glance_Mount_Buttons_"..cSpellID]
-		local fs = _G["Glance_Mount_Buttons_FontString_"..cSpellID]
-		
-		-- if the button exists
-		if m_btn ~= nil then		
-			-- link to the textures
-			m_btn.favtexture = _G["Glance_Mount_Buttons_FTexture_"..cSpellID]
-			m_btn.usetexture = _G["Glance_Mount_Buttons_UTexture_"..cSpellID]		
+		if cSpellID then
+			local m_btn = _G["Glance_Mount_Buttons_"..cSpellID]
+			local fs = _G["Glance_Mount_Buttons_FontString_"..cSpellID]
 			
-			-- set everything white and no icon
-			fs:SetTextColor(1,1,1,1)
-			m_btn.usetexture:SetTexture(0,0,0,0)
-			m_btn.favtexture:SetTexture(0,0,0,0)
-			
-			-- set favorite icon
-			if isFavorite then
-				m_btn.favtexture:SetTexture(btn.texture.favorite)	
-				m_btn.favtexture:SetWidth(16)
-			else
-				m_btn.favtexture:SetTexture(0,0,0,0)
-			end				
-			
-			-- set summoned color
-			if isSummoned then
-				fs:SetTextColor(.9, .7, .2 ,1)
+			-- if the button exists
+			if m_btn ~= nil then		
+				-- link to the textures
+				m_btn.favtexture = _G["Glance_Mount_Buttons_FTexture_"..cSpellID]
+				m_btn.usetexture = _G["Glance_Mount_Buttons_UTexture_"..cSpellID]		
+				
+				-- set everything white and no icon
+				fs:SetTextColor(1,1,1,1)
 				m_btn.usetexture:SetTexture(0,0,0,0)
-			end
-			
-			-- set useable texture
-			if not isUsable then
-				fs:SetTextColor(1,0,0,.7)
-				m_btn.usetexture:SetTexture(0,0,0,.7)
+				m_btn.favtexture:SetTexture(0,0,0,0)
+				
+				-- set favorite icon
+				if isFavorite then
+					m_btn.favtexture:SetTexture(btn.texture.favorite)	
+					m_btn.favtexture:SetWidth(16)
+				else
+					m_btn.favtexture:SetTexture(0,0,0,0)
+				end				
+				
+				-- set summoned color
+				if isSummoned then
+					fs:SetTextColor(.9, .7, .2 ,1)
+					m_btn.usetexture:SetTexture(0,0,0,0)
+				end
+				
+				-- set useable texture
+				if not isUsable then
+					fs:SetTextColor(1,0,0,.7)
+					m_btn.usetexture:SetTexture(0,0,0,.7)
+				end
 			end
 		end
 	end
@@ -500,71 +502,73 @@ function gf.Mounts.applyFilters(text)
 	if gfrm.mountFrame == nil then return end
 	local previousFrame = gfrm.mountListFrame
 	for i=1, C_MountJournal.GetNumMounts() do
-		local cName, cSpellID, cIcon, isSummoned, isUsable, sourceType, isFavorite, isFactionSpecific, faction, hideOnChar, isCollected = C_MountJournal.GetMountInfo(i)
-		local cDisplayID, cDescription, cSource, isSelfMount, mountFlags = C_MountJournal.GetMountInfoExtra(i)
+		local cName, cSpellID, cIcon, isSummoned, isUsable, sourceType, isFavorite, isFactionSpecific, faction, hideOnChar, isCollected = C_MountJournal.GetMountInfoByID(i)
+		local cDisplayID, cDescription, cSource, isSelfMount, mountFlags = C_MountJournal.GetMountInfoExtraByID(i)
 		
+		if cSpellID then
 		-- link to the proper objects
 		local m_btn = _G["Glance_Mount_Buttons_"..cSpellID]
-		if m_btn ~= nil then
-			-- hide all to start
-			m_btn:Hide();
-			
-			-- search box
-			if text ~= nil and text ~= "" then 
-				if string.find(strlower(cName), strlower(text)) then		
-					m_btn:Show();
-				end
-			-- or other filters
-			else
-				------------------------
-				-- if show ground mounts
-				if (spa.showGround and (mountFlags == 230 or mountFlags == 231)) then			
-					m_btn:Show();
-				end
-				-- if show flying mounts
-				if (spa.showFlying and (mountFlags == 242 or mountFlags == 248)) then			
-					m_btn:Show();
-				end
-				-- if show underwater mounts
-				if (spa.showUnderwater and (mountFlags == 231 or mountFlags == 232 or mountFlags == 254)) then			
-					m_btn:Show();
-				end
-				------------------------
-				-- if show overwater mounts
-				if (spa.showGround and spa.showOverwater and (mountFlags == 269)) then			
-					m_btn:Show();
-				end
-				-- if show Chauffeured mounts
-				if (spa.showGround and  spa.showChauffeured and (mountFlags == 284)) then			
-					m_btn:Show();
-				end
-				-- if show Zone Locked mounts
-				if (spa.showZoneLocked and ((spa.showUnderwater and mountFlags == 232) or (spa.showGround and mountFlags == 241))) then			
-					m_btn:Show();
-				end
-				-- if show no swimming mounts
-				if (spa.showFlying and spa.showNoSwimming and (mountFlags == 247)) then			
-					m_btn:Show();
-				end	
-				-- if show favorites checked
-				if (spa.showFavorites) then	
-					-- hide if not favorite and shown
-					if not isFavorite and m_btn:IsShown() then
-						m_btn:Hide();
-					end						
-				end
-			end
-			
-			-- REPOSITION EVERYTHING IF VISIBLE
-			if m_btn:IsShown() then
-				-- position it
-				if previousFrame == gfrm.mountListFrame then
-					m_btn:SetPoint("TOPLEFT", gfrm.mountListFrame, "TOPLEFT", 5, -5)
+			if m_btn ~= nil then
+				-- hide all to start
+				m_btn:Hide();
+				
+				-- search box
+				if text ~= nil and text ~= "" then 
+					if string.find(strlower(cName), strlower(text)) then		
+						m_btn:Show();
+					end
+				-- or other filters
 				else
-					m_btn:SetPoint("TOPLEFT", previousFrame, "BOTTOMLEFT", 0, -5)
-				end			
-				--make this frame the previous frame
-				previousFrame = _G["Glance_Mount_Buttons_"..cSpellID]	
+					------------------------
+					-- if show ground mounts
+					if (spa.showGround and (mountFlags == 230 or mountFlags == 231)) then			
+						m_btn:Show();
+					end
+					-- if show flying mounts
+					if (spa.showFlying and (mountFlags == 242 or mountFlags == 248)) then			
+						m_btn:Show();
+					end
+					-- if show underwater mounts
+					if (spa.showUnderwater and (mountFlags == 231 or mountFlags == 232 or mountFlags == 254)) then			
+						m_btn:Show();
+					end
+					------------------------
+					-- if show overwater mounts
+					if (spa.showGround and spa.showOverwater and (mountFlags == 269)) then			
+						m_btn:Show();
+					end
+					-- if show Chauffeured mounts
+					if (spa.showGround and  spa.showChauffeured and (mountFlags == 284)) then			
+						m_btn:Show();
+					end
+					-- if show Zone Locked mounts
+					if (spa.showZoneLocked and ((spa.showUnderwater and mountFlags == 232) or (spa.showGround and mountFlags == 241))) then			
+						m_btn:Show();
+					end
+					-- if show no swimming mounts
+					if (spa.showFlying and spa.showNoSwimming and (mountFlags == 247)) then			
+						m_btn:Show();
+					end	
+					-- if show favorites checked
+					if (spa.showFavorites) then	
+						-- hide if not favorite and shown
+						if not isFavorite and m_btn:IsShown() then
+							m_btn:Hide();
+						end						
+					end
+				end
+				
+				-- REPOSITION EVERYTHING IF VISIBLE
+				if m_btn:IsShown() then
+					-- position it
+					if previousFrame == gfrm.mountListFrame then
+						m_btn:SetPoint("TOPLEFT", gfrm.mountListFrame, "TOPLEFT", 5, -5)
+					else
+						m_btn:SetPoint("TOPLEFT", previousFrame, "BOTTOMLEFT", 0, -5)
+					end			
+					--make this frame the previous frame
+					previousFrame = _G["Glance_Mount_Buttons_"..cSpellID]	
+				end
 			end
 		end
 	end
@@ -730,8 +734,8 @@ function gf.Mounts.buildButtons()
 	
 	-- iterate mounts
 	for i=1, C_MountJournal.GetNumMounts() do
-		local cName, cSpellID, cIcon, isSummoned, isUsable, sourceType, isFavorite, isFactionSpecific, faction, hideOnChar, isCollected = C_MountJournal.GetMountInfo(i)
-		local cDisplayID, cDescription, cSource, isSelfMount, mountFlags = C_MountJournal.GetMountInfoExtra(i)		
+		local cName, cSpellID, cIcon, isSummoned, isUsable, sourceType, isFavorite, isFactionSpecific, faction, hideOnChar, isCollected = C_MountJournal.GetMountInfoByID(i)
+		local cDisplayID, cDescription, cSource, isSelfMount, mountFlags = C_MountJournal.GetMountInfoExtraByID(i)		
 		if IsIndoors() then isUsable = false end
 		
 		-- if you have it, and it's the right faction

@@ -26,7 +26,6 @@ btn.save.perCharacter 	= {["autoRepair"] = true,["guildRepair"] = true}
 btn.save.perAccount 	= {["showIL"] = true,["showCharacterOverlay"] = true,["showInspectOverlay"] = true,["showTooltipOverlay"] = true}
 btn.save.allowProfile 	= true
 
-
 ---------------------------
 -- shortcuts
 ---------------------------
@@ -42,12 +41,15 @@ local loaded = false
 gf.Armor.iLvl = {}
 gf.Armor.repair = {}
 gv.currentInspectUnit = nil
+gv.currentPreloadUnit = nil
 gv.data = {}
+gv.data.target = {}
+gv.data.player = {}
 
 ---------------------------
 -- arrays
 ---------------------------
-ga.slotItems = {
+ga.slotItems = { -- order is important, both names and index are used
 	"HeadSlot",
 	"NeckSlot",
 	"ShoulderSlot",
@@ -64,7 +66,7 @@ ga.slotItems = {
 	"Trinket1Slot",
 	"BackSlot",
 	"MainHandSlot",
-	"SecondaryHandSlot",	
+	"SecondaryHandSlot",
 	"TabardSlot",
 }
 gv.party.a["Armor"] = 0
@@ -109,8 +111,9 @@ function gf.Armor.onload()
 		end
 		-- can't add the labels if the Frame doesn't exist
 		if spa.showInspectOverlay then InspectUnit("player") end
+		if spa.showCharacterOverlay then ToggleCharacter("PaperDollFrame") end
 		-- iterate slots
-		for i = 1,18 do
+		for i = 1,#ga.slotItems do
 			if (ga.slotItems[i] ~= "ShirtSlot" and ga.slotItems[i] ~= "TabardSlot") then
 				-- create character sheet slot text
 				if spa.showCharacterOverlay then
@@ -133,12 +136,24 @@ function gf.Armor.onload()
 			local fs = InspectPaperDollFrame:CreateFontString("GlanceInspectFrameText","OVERLAY");
 			fs:SetJustifyH("Center");
 			fs:SetJustifyV("TOP")
-			fs:SetPoint("TOP",InspectPaperDollFrame,"TOP",0,-45);
+			fs:SetPoint("TOPRIGHT",InspectPaperDollFrame,"TOPRIGHT",-10,-38);
 			fs:SetFont(ga.Font[3][2], Glance_Local.Options.fontSize+6)
-			fs:SetText(HEX.gold.."Average Item Level: ");
+			fs:SetText(HEX.gold.."iLVL: ");
 			fs:Show();		
 			-- hide the inspect frame
 			ClearInspectPlayer()
+		end
+		-- create character frame avg ilevel	
+		if spa.showCharacterOverlay then		
+			local fs = PaperDollFrame:CreateFontString("GlanceCharacterFrameText","OVERLAY");
+			fs:SetJustifyH("Center");
+			fs:SetJustifyV("TOP")
+			fs:SetPoint("TOPLEFT",PaperDollFrame,"TOPLEFT",70,-38);
+			fs:SetFont(ga.Font[3][2], Glance_Local.Options.fontSize+6)
+			fs:SetText(HEX.gold.."iLVL: ");
+			fs:Show();		
+			-- hide the character frame
+			ToggleCharacter("PaperDollFrame")
 		end
 		-- hooks for iLvl on target
 		GameTooltip:HookScript("OnTooltipSetUnit",function(self,...)
@@ -156,8 +171,9 @@ function gf.Armor.onload()
 				end
 			end
 		end);		
-		-- set the player overlay data
-		gf.Armor.iLvl.getEquipmentLevels()
+		gf.Armor.iLvl.resetScanData("player");
+		gf.Armor.iLvl.preload("player")
+		Glance.Timers["Inspect"] = {1,5,false,"Armor","scan",nil} --min,max,reset,button,func,var	
 		loaded = true
 	end
 end
@@ -174,22 +190,20 @@ function gf.Armor.update(self, event, arg1)
 			gf.Armor.repair.repairAll()
 		-- update character tab overlays
 		elseif event == "PLAYER_EQUIPMENT_CHANGED" or  event == "PLAYER_ENTERING_WORLD" then
-			if (loaded and spa.showIL) then gf.Armor.iLvl.getEquipmentLevels() end			
+			if (loaded and spa.showIL) then 				
+				gf.Armor.iLvl.resetScanData("player");
+				gf.Armor.iLvl.preload("player")
+				Glance.Timers["Inspect"] = {1,5,false,"Armor","scan",nil} --min,max,reset,button,func,var		
+			end			
 		-- target item level
 		elseif event == "PLAYER_TARGET_CHANGED" then	
-			if InspectFrame and InspectFrame:IsShown() then InspectUnit("target"); end
+			if InspectFrame and InspectFrame:IsShown() and CanInspect("target") then InspectUnit("target"); end
 			if ( UnitExists("target") and spa.showIL ) then
-				--reset variables
-				gf.Armor.iLvl.reset();
+				--reset scan variables
+				gf.Armor.iLvl.resetScanData("target");
 				if (UnitIsUnit("target","target")) then	
 					-- send the inspection request
-					if CanInspect("target") then
-						gv.data.scanning = true;
-						gv.data.scanCount = 1;
-						if spa.showTooltipOverlay then
-							AI.texture:SetTexture(btn.texture.scan1);
-							AI:Show()
-						end
+					if UnitIsPlayer("target") then
 						gv.currentInspectUnit = UnitGUID("target")
 						NotifyInspect("target")
 					end
@@ -199,9 +213,9 @@ function gf.Armor.update(self, event, arg1)
 		elseif event == "INSPECT_READY" then
 			if gv.currentInspectUnit == arg1 and spa.showIL then
 				-- preload
-				gf.Armor.iLvl.cacheItems()
+				gf.Armor.iLvl.preload("target")
 				-- set the timer to get the stats
-				Glance.Timers["Inspect"] = {1,5,false,"Armor","getStats",nil} --min,max,reset,button,func,var				
+				Glance.Timers["Inspect"] = {1,5,false,"Armor","scan",nil} --min,max,reset,button,func,var				
 			end
 		end
 	end
@@ -217,20 +231,43 @@ function gf.Armor.tooltip()
 	-- repair line
 	local TotalInvCost, TotalBagCost, TotalRepairCost = gf.Armor.repair.getRepairCost()
 	if TotalRepairCost > 0 then
-		tooltip.Line("The total cost to repair your armor is: "..GetCoinTextureString(TotalRepairCost,0), "WHT")
+		tooltip.Line("The total cost to repair your armor is: "..GetCoinTextureString(TotalRepairCost,0), "WHT")	
 	else
 		tooltip.Line("Your armor is fully repaired.", "WHT")
 	end
+
+	-- durability	
+	if IsShiftKeyDown() then
+		tooltip.Space()
+		tooltip.Line("Durability", "GLD")	
+		for i = 1, #ga.slotItems do
+			local slotId = GetInventorySlotInfo(ga.slotItems[i])
+			local link = GetInventoryItemLink("player", slotId)
+			if (link) then				
+				local current, max = GetInventoryItemDurability(slotId)
+				if current ~= nil then			
+					local pct = math.floor((current/max) * 100)
+					local iname,_,rarity,level,_,_,subtype,_,equiptype = GetItemInfo(link); 
+					local ilvl = gf.Armor.iLvl.color(level)
+					local slotName = select(1,string.gsub(ga.slotItems[i],"Slot",""))
+					local slotQuality = "("..ITEM_QUALITY_COLORS[rarity].hex.._G["ITEM_QUALITY"..rarity.."_DESC"].."|r)"
+					local slotDurability = gf.Armor.getDurabilitycolor(pct).."|r%"
+					tooltip.Double(ilvl.." |r"..slotName.." |r"..slotQuality, slotDurability,"WHT", "WHT")
+				end	
+			end
+		end
+	end
 	
 	-- item levels
-	local itemLevel, eItemLevel = GetAverageItemLevel()
-	itemLevel = math.floor(itemLevel)
-	eItemLevel = math.floor(eItemLevel)
-	if itemLevel > 0 then
+	local iLevel = math.floor(select(2,GetAverageItemLevel())+0.5)
+	local eLevel = gf.Armor.iLvl.GetAverageItemLevel("player")
+	if iLevel > 0 then
 		tooltip.Space()
 		tooltip.Line("Item Level (iLvl)", "GLD")
-		tooltip.Double("Average Item Level",gf.Armor.iLvl.color(itemLevel), "WHT", "WHT")
-		tooltip.Double("Equipped Item Level",gf.Armor.iLvl.color(eItemLevel), "WHT", "WHT")
+		tooltip.Double("WoW Average Item Level",gf.Armor.iLvl.color(iLevel), "WHT", "WHT")
+		tooltip.Double("Estimated Item Level",gf.Armor.iLvl.color(eLevel), "WHT", "WHT")
+		if gv.data.player.boa > 0 then tooltip.Double("BOA",gv.data.player.boa, "WHT", "GLD") end
+		if (gv.data.player.mia-gv.data.player.mitigated) > 0 then tooltip.Double("MIA",gv.data.player.mia-gv.data.player.mitigated, "WHT", "RED") end
 	end
 		
 	-- party stats
@@ -238,7 +275,7 @@ function gf.Armor.tooltip()
 	if ((GetNumPartyMembers ~= 0 and sender ~= UnitName("player")) or gv.Debug) and Glance_Local.Options.sendStats then
 		gf.addonQuery("Armor")
 		tooltip.Space()
-		tooltip.Double("Party"..gf.crossRealm(), "(eLVL/iLVL)/DUR", "GLD", "GLD")	
+		tooltip.Double("Party"..gf.crossRealm(), "iLVL/DUR", "GLD", "GLD")	
 		gf.partyTooltip("Armor")
 	end	
 	
@@ -273,12 +310,12 @@ function gf.Armor.menu(level,UIDROPDOWNMENU_MENU_VALUE)
 		gf.setMenuTitle("Armor Options")
 		gf.setMenuHeader("Auto Repair","autorepair",level)
 		gf.setMenuHeader("Check Item Level","showil",level)
-		gf.setMenuHeader("Use Guild Funds","guildrepair",level)
 	end
 	if (level == 2) then
 		if gf.isMenuValue("autorepair") then
 			gf.setMenuOption(spc.autoRepair==true,"On","On",level,function() spc.autoRepair=true; end)
 			gf.setMenuOption(spc.autoRepair==false,"Off","Off",level,function() spc.autoRepair=false; end)
+			gf.setMenuHeader("Use Guild Funds","guildrepair",level)
 		end
 		if gf.isMenuValue("showil") then
 			gf.setMenuOption(spa.showIL==true,"On","On",level,function() spa.showIL=true; gf.Armor.iLvl.showOverlays("Character",spa.showCharacterOverlay); gf.Armor.iLvl.showOverlays("Inspect",spa.showInspectOverlay); end)
@@ -287,12 +324,12 @@ function gf.Armor.menu(level,UIDROPDOWNMENU_MENU_VALUE)
 			gf.setMenuHeader("Inspect Frame Overlays","showIO",level, not spa.showIL)
 			gf.setMenuHeader("Tooltip Overlays","showTT",level, not spa.showIL)
 		end
+	end	
+	if (level == 3) then
 		if gf.isMenuValue("guildrepair") then
 			gf.setMenuOption(spc.guildRepair==true,"On","On",level,function() spc.guildRepair=true; end)
 			gf.setMenuOption(spc.guildRepair==false,"Off","Off",level,function() spc.guildRepair=false; end)
 		end
-	end	
-	if (level == 3) then
 		if gf.isMenuValue("showCO") then
 			gf.setMenuOption(spa.showCharacterOverlay==true,"On","On",level,function() spa.showCharacterOverlay=true; gf.Armor.iLvl.showOverlays("Character",true); end)
 			gf.setMenuOption(spa.showCharacterOverlay==false,"Off","Off",level,function() spa.showCharacterOverlay=false; gf.Armor.iLvl.showOverlays("Character",false); end)
@@ -313,19 +350,25 @@ end
 ---------------------------
 function gf.Armor.Message()
 	Glance.Debug("function","Message","Armor")
-	local itemLevel, eItemLevel = GetAverageItemLevel()
-	itemLevel = math.floor(itemLevel)
-	eItemLevel = math.floor(eItemLevel)
-	return "|r("..gf.Armor.iLvl.color(eItemLevel).."|r/"..gf.Armor.iLvl.color(itemLevel).."|r)/"..gf.Armor.getDurability().."%"
+	local itemLevel = gf.Armor.iLvl.GetAverageItemLevel("player")
+	return "|r("..gf.Armor.iLvl.color(itemLevel).."|r)/"..gf.Armor.getDurability().."%"
 end
+
+
+
+------------------------------------------------------------------------------------------------------------
+-- DURABILITY METHODS
+------------------------------------------------------------------------------------------------------------
+
 	
+
 ---------------------------
--- durability 
+-- durability (button text)
 ---------------------------
 function gf.Armor.getDurability()
 	Glance.Debug("function","getDurability","Armor")
 	local have, most, pct = 0,0,0
-	local sOut
+	local sOut = HEX.red..0
 	for i = 1, 19 do
 		local current, max = GetInventoryItemDurability(i)
 		if current ~= nil then
@@ -335,511 +378,34 @@ function gf.Armor.getDurability()
 	end
 	if most > 0 then
 		pct = math.floor((have/most) * 100)
-		if pct >= 75 then
-			sOut = HEX.green..pct
-		elseif pct < 75 and pct > 50 then
-			sOut = HEX.yellow..pct
-		else
-			sOut = HEX.red..pct
-		end
+		sOut = gf.Armor.getDurabilitycolor(pct)
 	end
-	return sOut or HEX.gray.."0"
+	return sOut
 end
 
 ---------------------------
--- return guild funds available
+-- durability (color)
 ---------------------------
-function gf.Armor.getGuildFunds()
-	Glance.Debug("function","getGuildFunds","Armor")
-	if CanGuildBankRepair() then
-		local GuildMoney = GetGuildBankWithdrawMoney()
-		if GuildMoney == -1 then 
-			return HEX.green.."Unlimited"
-		elseif gf.matchSingle(tostring(GuildMoney),"+") then
-			return HEX.red.."Err"
-		else
-			return GetCoinTextureString(math.ceil(GuildMoney),0)
-		end
-	end
-	return nil
-end
-
----------------------------
--- reset iLvl data
----------------------------
-function gf.Armor.iLvl.reset()
-	Glance.Debug("function","iLvl.reset","Armor")
-	gv.data.spec = nil
-	gv.data.iLvl = 0;
-	gv.data.boa = 0;
-	gv.data.badboa = 0;
-	gv.data.pvp = 0;
-	gv.data.mia = 0;
-	gv.data.fury = false;
-	gv.data.slot = {}
-	for i = 1,17 do
-		gv.data.slot[i] = 0
-	end
-end 
-
----------------------------
--- colorize avg iLvl
----------------------------
-function gf.Armor.iLvl.color(iLvl,unit)
-	Glance.Debug("function","iLvl.color","Armor")
-	if not unit then unit = "player" end
-	-- going with 30 points difference between each quality lvl
-	local rare = gf.Armor.iLvl.getBOALevel(unit,2)
-	local epic = rare + 30
-	local legendary = epic + 30
-	local uncommon = rare - 30
-	local common = uncommon - 30
-	local poor = common - 30		
-	local r, g, b, hex
-	if iLvl <= poor then 
-		r, g, b, hex = GetItemQualityColor(0);
-	end
-	if iLvl > poor and iLvl <= common then 
-		r, g, b, hex = GetItemQualityColor(1);
-	end
-	if iLvl > common and iLvl <= uncommon then 
-		r, g, b, hex = GetItemQualityColor(2);
-	end
-	if iLvl > uncommon and iLvl <= rare then 
-		r, g, b, hex = GetItemQualityColor(3);
-	end
-	if iLvl > rare and iLvl <= epic then 
-		r, g, b, hex = GetItemQualityColor(4);
-	end
-	if iLvl > epic then 
-		r, g, b, hex = GetItemQualityColor(5);
-	end
-	return "|c"..hex..iLvl
-end
-
----------------------------
--- set slot text
----------------------------
-function gf.Armor.iLvl.setSlotText(slot,il,avg)
-	if (_G["Glance"..slot.."Text"]) then
-		-- item level is less than average
-		if (tonumber(il) < avg) then	
-			-- item level is more than 15 points below avg (white)
-			if (tonumber(il) < (avg-15)) then
-				_G["Glance"..slot.."Text"]:SetTextColor(1,0.8,0,1);
-			-- item level is within 15 points of avg (green)
-			else
-				_G["Glance"..slot.."Text"]:SetTextColor(0,1,0.2,1);
-			end
-		-- item level is greater than average
-		else
-			-- item level is greater than 15 points above average (purple)
-			if (tonumber(il) > (avg+15)) then
-				_G["Glance"..slot.."Text"]:SetTextColor(1,.5,1,1);
-			-- item level is within 15 points of average (blue)
-			else
-				_G["Glance"..slot.."Text"]:SetTextColor(0,0.8,1,1);
-			end
-		end
-		_G["Glance"..slot.."Text"]:SetText(il)
-	end
-end
-
----------------------------
--- update target tooltip
----------------------------
-function gf.Armor.iLvl.tooltipUpdate()
-	if gv.data.scanning or not spa.showTooltipOverlay then return end	
-	Glance.Debug("function","iLvl.tooltipUpdate","Armor")
-	local outputLine, matched, index = nil, false, 0;		
-	-- adding or editing the spec line
-	if gv.data.spec then
-		outputLine = HEX.yellow.."Spec: "..gv.data.spec
-		for i = 2, GameTooltip:NumLines() do
-			if ((_G["GameTooltipTextLeft"..i]:GetText() or ""):match("^"..HEX.yellow.."Spec: ")) then
-				index = i;
-				break;
-			end
-		end
-		gf.Armor.iLvl.tooltipAddLine(index,outputLine); index = 0;
-	end
-		
-	-- adding or editing the iLvl lines
-	if gv.data.iLvl > 0 then
-		-- print the item level
-		outputLine = HEX.white.."iLvl: |r"..gf.Armor.iLvl.color(gv.data.iLvl,"target")
-		-- wearing BOA gear
-		if gv.data.boa > 0 then
-			outputLine = outputLine..HEX.boa.."  BOA: "..gv.data.boa
-		end
-		-- outdated boa gear
-		if gv.data.badboa > 0 then
-			outputLine = outputLine..HEX.red.."  BAD: "..gv.data.badboa
-		end
-		-- wearing PVP gear
-		if gv.data.pvp > 0 then
-			outputLine = outputLine..HEX.lightblue.."  PVP: "..gv.data.pvp	
-		end
-		-- missing items
-		if gv.data.mia > 0 then
-			outputLine = outputLine..HEX.red.."  MIA: "..gv.data.mia	
-		end
-		
-		for i = 2, GameTooltip:NumLines() do
-			if ((_G["GameTooltipTextLeft"..i]:GetText() or ""):match("^"..HEX.white.."iLvl: ")) then
-				index = i;
-				break;
-			end
-		end
-		gf.Armor.iLvl.tooltipAddLine(index,outputLine); index = 0;
-	end
-end
-
----------------------------
--- insert/update tooltip line
----------------------------
-function gf.Armor.iLvl.tooltipAddLine(line,text)	
-	-- updating existing line
-	if (line > 0) then
-		_G["GameTooltipTextLeft"..line]:SetText(text);
-	-- adding a new line
+function gf.Armor.getDurabilitycolor(pct)
+	if pct >= 75 then
+		sOut = HEX.green..pct
+	elseif pct < 75 and pct > 50 then
+		sOut = HEX.yellow..pct
 	else
-		GameTooltip:AddLine(text);
+		sOut = HEX.red..pct
 	end
-	GameTooltip:Show();
+	return sOut
 end
 
----------------------------
--- scan tooltip
----------------------------
-function gf.Armor.iLvl.tooltipScan(link,upgrade)
-	iLevelTooltip:ClearLines()
-	iLevelTooltip:SetHyperlink(link)
-	for i = 1, iLevelTooltip:NumLines() do
-		local text = _G["Glance_Tooltip_iLevelTextLeft"..i]:GetText()
-		if upgrade then
-			local c,t = text:match("Heirloom Upgrade Level: (%d+)/(%d+)")
-			if c ~= nil then return tonumber(c), i end
-		else
-			local match = text:match("Item Level (%d+)")
-			if match ~= nil then return tonumber(match), i end
-		end
-	end
-	return 0
-end
+
+------------------------------------------------------------------------------------------------------------
+-- REPAIR METHODS
+------------------------------------------------------------------------------------------------------------
+
+
 
 ---------------------------
--- calculate BOA iLvl
----------------------------
-function gf.Armor.iLvl.getBOALevel(unit,upgrade)
-	local pl = UnitLevel(unit)	
-	-- upgrade cap 0 = 60, 1 = 90, 2 = 100
-	if upgrade == 0 and pl > 60 then pl = 60; gv.data.badboa = gv.data.badboa + 1 end
-	if upgrade == 1 and pl > 90 then pl = 90; gv.data.badboa = gv.data.badboa + 1 end
-	if upgrade == 2 and pl > 100 then pl = 100; gv.data.badboa = gv.data.badboa + 1 end
-	
-	-- completely off the top of my head, but the numbers will all match wowhead's boa calculator
-	-- draenor
-	if pl >= 91 and pl <= 100 then
-		-- previous iLvl (level 90)
-		local base = 463
-		if pl >= 98 then
-			return ((base+((17*4)-1)) + ((tonumber(pl)-91) * 10) - ((tonumber(pl)-97)*5))
-		else
-			return ((base+((17*4)-1)) + ((tonumber(pl)-91) * 10))
-		end
-	
-	-- pandaria (51 points from level 80 ilvl then increases 20pts per level)
-	elseif pl >= 86 and pl <= 90 then
-		-- previous iLvl (level 85)
-		local base = 333
-		-- wowhead calculator is 1 pt below this calculation from level 63-67, so we adjust
-		if pl >= 89 then base = base -1 end
-		return ((base+(17*3)) + ((tonumber(pl)-86) * 20))
-	
-	-- cata (out of control.. 92 points from level 80 iLvl, then increases 14pts per level)
-	elseif pl >= 81 and pl <= 85 then
-		-- previous iLvl (level 80)
-		local base = 187
-		-- wowhead calculator is 2 pts below this calculation for level 85, so we adjust
-		if pl == 85 then base = base -2 end
-		-- wowhead calculator is 1 pt below this calculation from level 83-84, so we adjust
-		if pl >= 83 and pl <= 84 then base = base -1 end
-		return ((base+92) + ((tonumber(pl)-81) * 14))
-	
-	-- wrath (34 points from level 67 ilvl then increases 4pts per level)
-	elseif pl >= 68 and pl <= 80 then
-		-- previous iLvl (level 67)
-		local base = 105
-		return ((base+(17*2)) + ((tonumber(pl)-68) * 4))
-	
-	-- outlands (17 points from level 57 ilvl then increases 3pts per level)
-	elseif pl >= 58 and pl <= 67 then
-		-- previous iLvl (level 57)
-		local base = 62
-		-- wowhead calculator is 1 pt below this calculation from level 63-67, so we adjust
-		if pl >= 63 then base = base -1 end
-		return ((base+17) + ((tonumber(pl)-58) * 3))
-	
-	-- vanilla (player level - 5)
-	elseif pl >= 6 and pl <= 57 then
-		return tonumber(pl) - 5
-		
-	-- first 5 levels are just 10
-	elseif pl >= 1 and pl <= 5 then
-		return 10
-		
-	-- default to something
-	else
-		return 0
-	end
-end
-
----------------------------
--- request server data
----------------------------
-function gf.Armor.iLvl.cacheItems()
-	Glance.Debug("function","iLvl.cacheItems","Armor")
-	-- checking the items early will start the server requests for data
-	-- BOA items are already available, but we have to wait for the rest
-	gv.data.missing = 0
-	for i = 1,17 do
-		local link = nil
-		-- not the shirt
-		if (i ~= 4) then	
-			-- player
-			if (UnitIsUnit("target","player")) then
-				link = GetInventoryItemLink(GetUnitName("target",true),i);
-			-- target
-			else
-				link = GetInventoryItemLink("target",i);
-			end
-			if (link) then local iname,_,rarity,level,_,_,subtype,_,equiptype = GetItemInfo(link); end	
-			-- the textures if the items are already available
-			-- so we can get the true number of missing items
-			if not GetInventoryItemTexture("target",i) then
-				gv.data.missing = gv.data.missing + 1
-			end
-		end
-	end
-end
-
----------------------------
--- get target stats
----------------------------
-function gf.Armor.getStats() gf.Armor.iLvl.getStats(); end
-function gf.Armor.iLvl.getStats()
-	if not spa.showIL then return end
-	Glance.Debug("function","iLvl.getStats","Armor")
-	-- locals
-	local specID, lvl, count = nil,0,0;
-	local dualHand, miaMainHand, miaOffHand = false, false, false;
-	local lClass, eClass = UnitClass("target");
-	
-	-- end if mismatch
-	if not gv.currentInspectUnit == UnitGUID("target") then return end
-		
-	-- get the player spec
-	if (UnitIsUnit("target","player")) then
-		local currentSpec = GetSpecialization();
-		local specID = currentSpec and select(1, GetSpecializationInfo(currentSpec))
-		gv.data.spec = select(2,GetSpecializationInfoByID(specID));
-	-- get the target spec
-	else
-		if (UnitLevel("target") > 9) then
-			local specID = GetInspectSpecialization("target");
-			local _, specName = GetSpecializationInfoByID(specID);
-			gv.data.spec = select(2,GetSpecializationInfoByID(specID));
-		end
-	end
-	
-	-- fury spec
-	if (specID == "268") then
-		gv.data.fury = true
-	end	
-	
-	-- iterate equipment
-	for i = 1,17 do
-		local link = nil
-		-- not the shirt
-		if (i ~= 4) then	
-			-- player
-			if (UnitIsUnit("target","player")) then
-				link = GetInventoryItemLink(GetUnitName("target",true),i);
-			-- target
-			else
-				link = GetInventoryItemLink("target",i);
-			end
-			-- if we get a link
-			if (link) then
-				--get the item info
-				local iname,_,rarity,wowlevel,_,_,subtype,_,equiptype = GetItemInfo(link);	
-				
-				-- get the item level from the tooltip
-				local level, line = gf.Armor.iLvl.tooltipScan(link)
-				
-				--do two-handed check based on mainhand weapon
-				if (i == 16) then
-					if (equiptype == "INVTYPE_2HWEAPON" or equiptype == "INVTYPE_RANGED" or equiptype == "INVTYPE_RANGEDRIGHT") then
-						dualHand = true;
-					else
-						dualHand = false;
-					end
-				end
-				
-				-- check other stats
-				if (level) then
-					-- check for boa gear
-					if (rarity == 7) then
-						-- boa returned earlier as 1 from GetItemInfo or 436 from tooltip scan. 
-						-- this is the default boa level before the player level is calculated.
-						local upgrade, line = gf.Armor.iLvl.tooltipScan(link,true)					
-						level = gf.Armor.iLvl.getBOALevel("target",upgrade)
-						--print("upg:"..upgrade.." lvl:"..level.." bad:"..gv.data.badboa)
-						-- count the boa gear
-						gv.data.boa = gv.data.boa + 1;
-						count = count + 1;
-					-- check for pvp gear
-					else
-						local stats = GetItemStats(link);
-						count = count + 1
-
-						-- check for resilience
-						for stat, value in pairs(stats) do
-							if (stat == "ITEM_MOD_RESILIENCE_RATING_SHORT" or stat == "ITEM_MOD_PVP_POWER_SHORT") then
-								gv.data.pvp = gv.data.pvp + 1;
-								break;
-							end
-						end
-					end
-					lvl = lvl + level
-					gv.data.slot[i] = level
-				end
-			else				
-				--could not get item information, probably missing
-				if (i==16) then
-					miaMainHand = true;
-				elseif (i==17) then
-					miaOffHand = true;
-				end
-				--based on furySpec, evaluate the equipped weapons
-				if (i==17 and gv.data.fury) then
-					--player has titan's grip, so we should count this as a missing item.
-					count = count + 1;
-					gv.data.mia = gv.data.mia + 1;
-				else
-					--player does not have titans grip. Check if they have a two-hander equipped.
-					if (i==17 and dualHand == true) then
-						--two hander equipped, so we can't ding them for the missing off-hand
-					else
-						--not a two hander so we need to ding them for missing a slot
-						count = count + 1;
-						gv.data.mia = gv.data.mia + 1;
-					end
-				end
-			end
-		end
-	end
-	
-	--make adjustments to the calculation based on above equipment evaluation
-	if (miaMainHand and miaOffHand and eClass ~= "ROGUE" and gv.data.fury == false) then
-		--if they are missing both main and offhand but can cover both by equipping a two-hander,
-		--only count it against them once.
-		gv.data.mia = gv.data.mia - 1;
-		count = count - 1;
-	end
-	
-	--set the item level average
-	if (count > 0) then		
-		gv.data.iLvl = floor((lvl/count)*1)/1;
-	else
-		gv.data.iLvl = 0;
-	end
-	
-	-- if mia is greater than the true number of missing items then rescan (max 5 times)
-	if (gv.data.mia > gv.data.missing) and gv.data.scanCount < 5 then
-		gv.data.scanCount = gv.data.scanCount + 1
-		if spa.showTooltipOverlay then AI.texture:SetTexture(btn.texture.scan2); end
-		gf.Armor.update(self, "INSPECT_READY", UnitGUID("target"))
-	else
-		--[[print("----------------")
-		print("ScanCount: "..HEX.yellow..gv.data.scanCount)
-		print("Missing: "..HEX.yellow..gv.data.missing)
-		print("MIA: "..HEX.yellow..gv.data.mia)
-		print("BOA: "..HEX.yellow..gv.data.boa)
-		print("BAD: "..HEX.yellow..gv.data.badboa)
-		print("TotalLevel / ItemsWorn = "..lvl.."/"..count.." = "..HEX.yellow..gv.data.iLvl)--]]
-		gv.data.scanning = false;
-		if spa.showTooltipOverlay then
-			AI:Hide()		
-			gf.Armor.iLvl.tooltipUpdate()
-		end
-		if spa.showInspectOverlay then
-			for i = 1,17 do
-				local slot = "Inspect"..ga.slotItems[i];
-				gf.Armor.iLvl.setSlotText(slot,gv.data.slot[i],gv.data.iLvl)
-			end
-			_G["GlanceInspectFrameText"]:SetText(HEX.gold.."Average Item Level: "..gf.Armor.iLvl.color(gv.data.iLvl,"target"))
-		end
-	end
-	--ClearInspectPlayer()
-end
-
----------------------------
--- do the fontstrings exist?
----------------------------
-function gf.Armor.iLvl.showOverlays(which,show)
-	Glance.Debug("function","iLvl.showOverlays","Armor")
-	DoesNotExist = true
-	for i = 1,18 do
-		local slot = which..ga.slotItems[i];
-		if (_G["Glance"..slot.."Text"]) then
-			if show then
-				_G["Glance"..slot.."Text"]:Show()
-			else
-				_G["Glance"..slot.."Text"]:Hide()
-			end
-			DoesNotExist = false
-		end
-	end
-	if show then
-		if DoesNotExist then
-			gf.Armor.onload()
-		elseif which=="Character" then
-			gf.Armor.iLvl.getEquipmentLevels()
-		end
-		if which == "Inspect" then
-			_G["GlanceInspectFrameText"]:Show()
-		end
-	else
-		if which == "Inspect" then
-			_G["GlanceInspectFrameText"]:Hide()
-		end
-	end
-end
-
----------------------------
--- find item levels
----------------------------
-function gf.Armor.iLvl.getEquipmentLevels()
-	if not spa.showCharacterOverlay then return end
-	Glance.Debug("function","iLvl.getEquipmentLevels","Armor")
-	local itemLevel, eItemLevel = GetAverageItemLevel()
-	for i = 1,18 do
-		local slot = "Character"..ga.slotItems[i];
-		if (i ~= 4) then
-			local link = GetInventoryItemLink(GetUnitName("player",true),i);
-			if (link) then
-				local il, line = gf.Armor.iLvl.tooltipScan(link)
-				if not il then il = 0 end
-				gf.Armor.iLvl.setSlotText(slot,il,itemLevel)
-			end
-		end
-	end	
-end
-
----------------------------
--- repair costs
+-- repair costs (tooltip repair line)
 ---------------------------
 function gf.Armor.repair.getRepairCost()
 	Glance.Debug("function","repair.getRepairCost","Armor")
@@ -865,25 +431,43 @@ function gf.Armor.repair.getRepairCost()
 end
  	
 ---------------------------
--- return guild funds available
+-- return guild repair available (tooltip options)
 ---------------------------
 function gf.Armor.repair.canRepair()
 	Glance.Debug("function","repair.canRepair","Armor")
 	local val
 	if spc.guildRepair then val = "On" else val = "Off" end
-	if not CanGuildBankRepair() then val=HEX.gray..val end
+	if CanGuildBankRepair and CanGuildBankRepair() then else val=HEX.gray..val end
 	return val
 end
 
 ---------------------------
--- armor repair
+-- return guild funds available (tooltip options)
+---------------------------
+function gf.Armor.getGuildFunds()
+	Glance.Debug("function","getGuildFunds","Armor")
+	if CanGuildBankRepair and CanGuildBankRepair() then
+		local GuildMoney = GetGuildBankWithdrawMoney()
+		if GuildMoney == -1 then 
+			return HEX.green.."Unlimited"
+		elseif gf.matchSingle(tostring(GuildMoney),"+") then
+			return HEX.red.."Err"
+		else
+			return GetCoinTextureString(math.ceil(GuildMoney),0)
+		end
+	end
+	return nil
+end
+
+---------------------------
+-- armor repair (merchant open)
 ---------------------------
 function gf.Armor.repair.repairAll()
 	Glance.Debug("function","repair.repairAll","Armor")			
 	if CanMerchantRepair()==true and spc.autoRepair then
 		local cost, needed = GetRepairAllCost();	
 		if needed then
-			if CanGuildBankRepair() and spc.guildRepair then
+			if CanGuildBankRepair and CanGuildBankRepair() and spc.guildRepair then
 				local funds = GetGuildBankWithdrawMoney()
 				if cost > funds then
 					local funds = GetMoney()
@@ -891,12 +475,12 @@ function gf.Armor.repair.repairAll()
 						gf.sendMSG("You don't have enough money for repair!");
 					else
 						RepairAllItems();
-						PlaySound("LOOTWINDOWCOINSOUND")
+						PlaySound(SOUNDKIT.LOOT_WINDOW_COIN_SOUND)
 						gf.sendMSG("There was not enough money in your daily guild bank allotment for repair.  Your items have been repaired from your own funds for "..GetCoinTextureString(cost,0))		
 					end
 				else
 					RepairAllItems(1)
-					PlaySound("LOOTWINDOWCOINSOUND")
+					PlaySound(SOUNDKIT.LOOT_WINDOW_COIN_SOUND)
 					gf.sendMSG("Your items have been repaired by the guild for "..GetCoinTextureString(cost,0))
 					return
 				end
@@ -906,13 +490,485 @@ function gf.Armor.repair.repairAll()
 					gf.sendMSG("You don't have enough money for repair!");
 				else
 					RepairAllItems();
-					PlaySound("LOOTWINDOWCOINSOUND")
+					PlaySound(SOUNDKIT.LOOT_WINDOW_COIN_SOUND)
 					gf.sendMSG("Your items have been repaired for "..GetCoinTextureString(cost,0))	
 				end
 			end
 		end
 	end
 end
+
+
+
+------------------------------------------------------------------------------------------------------------
+-- ITEM LEVEL METHODS
+------------------------------------------------------------------------------------------------------------
+
+
+
+---------------------------
+-- reset scan data (update, on target change)
+---------------------------
+function gf.Armor.iLvl.resetScanData(unit)
+	Glance.Debug("function","iLvl.resetScanData","Armor")
+	if not unit then unit = "target" end
+	gv.data[unit].name = nil
+	gv.data[unit].spec = nil
+	gv.data[unit].iLvl = 0;
+	gv.data[unit].mia = 0;
+	gv.data[unit].boa = 0;
+	gv.data[unit].missing = 0;
+	gv.data[unit].mitigated = 0;
+	gv.data[unit].fury = false;
+	gv.data[unit].slot = {}
+	for i = 1,#ga.slotItems do
+		gv.data[unit].slot[i] = 0
+	end
+end 
+
+---------------------------
+-- average item level
+---------------------------
+function gf.Armor.iLvl.GetAverageItemLevel(unit)
+	local total, average, count, slots = 0,0,0,0
+	for i = 1,#ga.slotItems do		
+		if (ga.slotItems[i] ~= "ShirtSlot" and ga.slotItems[i] ~= "TabardSlot") then
+			total = total + gv.data[unit].slot[i]
+			slots = slots + 1
+			--print(ga.slotItems[i]..": "..tostring(gv.data[unit].slot[i]))
+		end
+	end
+	if (total > 0) then
+		count = slots - gv.data[unit].mia
+		average = total/count
+		--[[print("Missing: "..tostring(gv.data[unit].missing))
+		print("MIA: "..tostring(gv.data[unit].mia))
+		print("Mitigated: "..tostring(gv.data[unit].mitigated))
+		print("Slots: "..tostring(slots))
+		print("Count: "..tostring(count))
+		print("Total: "..tostring(total))
+		print("Average: "..tostring(math.floor(average+0.5)))--]]
+		return math.floor(average+0.5)
+	else
+		return 0
+	end
+end
+
+---------------------------
+-- colorize avg iLvl
+---------------------------
+function gf.Armor.iLvl.color(iLvl,unit,rgb)
+	Glance.Debug("function","iLvl.color","Armor")
+	if not unit then unit = "player" end
+	local pl = gf.Armor.iLvl.GetAverageItemLevel(unit);
+	local epic = pl+8
+	local legendary = pl+4
+	local uncommon = pl
+	local common = pl-4
+	local poor = pl-8	
+	local rarity = 0
+	if iLvl <= poor then rarity = 0 end --poor
+	if iLvl > poor and iLvl <= common then rarity = 1 end -- common
+	if iLvl > common and iLvl <= uncommon then rarity = 2 end -- uncommon
+	if iLvl > uncommon and iLvl <= legendary then rarity = 3 end -- legendary
+	if iLvl > legendary and iLvl <= epic then rarity = 4 end -- epic
+	if iLvl > epic then rarity = 5 end -- legendary
+	if not rgb then
+		return ITEM_QUALITY_COLORS[rarity].hex..iLvl
+	else
+		return ITEM_QUALITY_COLORS[rarity].r,ITEM_QUALITY_COLORS[rarity].g,ITEM_QUALITY_COLORS[rarity].b
+	end
+end
+
+---------------------------
+-- set slot text
+---------------------------
+function gf.Armor.iLvl.setSlotText(slot,il,unit)
+	if (_G["Glance"..slot.."Text"]) then
+		local r, g, b = gf.Armor.iLvl.color(il,unit,true)		
+		_G["Glance"..slot.."Text"]:SetTextColor(r,g,b,1);
+		_G["Glance"..slot.."Text"]:SetText(il)
+	end
+end
+
+---------------------------
+-- do the fontstrings exist?
+---------------------------
+function gf.Armor.iLvl.showOverlays(which,show)
+	Glance.Debug("function","iLvl.showOverlays","Armor")
+	DoesNotExist = true
+	for i = 1,#ga.slotItems do
+		if (ga.slotItems[i] ~= "ShirtSlot" and ga.slotItems[i] ~= "TabardSlot") then
+			local slot = which..ga.slotItems[i];
+			if (_G["Glance"..slot.."Text"]) then
+				if show then
+					_G["Glance"..slot.."Text"]:Show()
+				else
+					_G["Glance"..slot.."Text"]:Hide()
+				end
+				DoesNotExist = false
+			end
+		end
+	end
+	if show then
+		if DoesNotExist then
+			gf.Armor.onload()
+		elseif which=="Character" then
+			gf.Armor.iLvl.getEquipmentLevels()
+		end
+		if which == "Inspect" then
+			_G["GlanceInspectFrameText"]:Show()
+		end
+	else
+		if which == "Inspect" then
+			_G["GlanceInspectFrameText"]:Hide()
+		end
+	end
+end
+
+---------------------------
+-- insert/update target tooltip line
+---------------------------
+function gf.Armor.iLvl.tooltipAddLine(line,text)	
+	-- updating existing line
+	if (line > 0) then
+		_G["GameTooltipTextLeft"..line]:SetText(text);
+	-- adding a new line
+	else
+		GameTooltip:AddLine(text);
+	end
+	GameTooltip:Show();
+end
+
+---------------------------
+-- update target tooltip
+---------------------------
+function gf.Armor.iLvl.tooltipUpdate()
+	if gv.data.target.scanning or not spa.showTooltipOverlay then return end	
+	Glance.Debug("function","iLvl.tooltipUpdate","Armor")
+	local outputLine, matched, index = nil, false, 0;	
+
+	-- adding or editing the spec line
+	if gv.data.target.spec then
+
+		-- add the spec
+		outputLine = HEX.yellow.."Spec: "..gv.data.target.spec
+		
+		--finds the line index of Spec if it exists
+		for i = 2, GameTooltip:NumLines() do
+			if ((_G["GameTooltipTextLeft"..i]:GetText() or ""):match("^"..HEX.yellow.."Spec: ")) then
+				index = i;
+				break;
+			end
+		end
+		gf.Armor.iLvl.tooltipAddLine(index,outputLine); index = 0;
+	end
+		
+	-- adding or editing the iLvl lines
+	if gv.data.target.iLvl > 0 then
+
+		-- add the item level
+		outputLine = HEX.lightblue.."iLvl: |r"..gf.Armor.iLvl.color(gv.data.target.iLvl,"target")
+
+		--finds the line index of iLvl if it exists
+		for i = 2, GameTooltip:NumLines() do
+			if ((_G["GameTooltipTextLeft"..i]:GetText() or ""):match("^"..HEX.white.."iLvl: ")) then
+				index = i;
+				break;
+			end
+		end
+		gf.Armor.iLvl.tooltipAddLine(index,outputLine); index = 0;
+	end	
+		
+	-- adding or editing the mia lines
+	if gv.data.target.mia > 0 then
+
+		-- add missing items
+		outputLine = HEX.red.."MIA: |r"..tostring(gv.data.target.mia-gv.data.target.mitigated)	
+
+		--finds the line index of MIA if it exists
+		for i = 2, GameTooltip:NumLines() do
+			if ((_G["GameTooltipTextLeft"..i]:GetText() or ""):match("^"..HEX.white.."MIA: ")) then
+				index = i;
+				break;
+			end
+		end
+		gf.Armor.iLvl.tooltipAddLine(index,outputLine); index = 0;
+	end
+		
+	-- adding or editing the boa lines
+	if gv.data.target.boa > 0 then
+
+		-- add missing items
+		outputLine = HEX.boa.."BOA: |r"..tostring(gv.data.target.boa)	
+
+		--finds the line index of MIA if it exists
+		for i = 2, GameTooltip:NumLines() do
+			if ((_G["GameTooltipTextLeft"..i]:GetText() or ""):match("^"..HEX.white.."BOA: ")) then
+				index = i;
+				break;
+			end
+		end
+		gf.Armor.iLvl.tooltipAddLine(index,outputLine); index = 0;
+	end
+end
+
+---------------------------
+-- scan tooltip
+---------------------------
+function gf.Armor.iLvl.tooltipScan(link, unit)
+	-- Heirloom gear uses the level of the inspecting player; this changes it to the inspected player
+	local ITEMLINK_PATTERN_LINKLEVEL = "(item:"..("[^:]*:"):rep(8)..")(%d*)(.+)";
+	link = link:gsub(ITEMLINK_PATTERN_LINKLEVEL,"%1"..UnitLevel(unit).."%3")
+	iLevelTooltip:ClearLines()
+	iLevelTooltip:SetHyperlink(link)
+	for i = 1, iLevelTooltip:NumLines() do
+		local text = _G["Glance_Tooltip_iLevelTextLeft"..i]:GetText()
+		local match = text:match("Item Level (%d+)")
+		if match ~= nil then return tonumber(match), i end
+	end
+	return 0
+end
+
+---------------------------
+-- request server data
+---------------------------
+function gf.Armor.iLvl.preload(unit)
+	Glance.Debug("function","iLvl.preload","Armor")
+	-- checking the items early will start the server requests for data
+	-- timer is set after the call to preload that will run the scan
+	gv.data[unit].missing = 0
+	gv.currentPreloadUnit = unit
+	gv.data.target.scanning = true;
+	gv.data.target.scanCount = 1;
+	if spa.showTooltipOverlay then
+		AI.texture:SetTexture(btn.texture.scan1);
+		AI:Show()
+	end
+	for i = 1,#ga.slotItems do
+		local link = nil
+		local slotId = GetInventorySlotInfo(ga.slotItems[i])
+		if (ga.slotItems[i] ~= "ShirtSlot" and ga.slotItems[i] ~= "TabardSlot") then
+			-- player
+			if (UnitIsUnit("target","player")) then
+				link = GetInventoryItemLink(GetUnitName("target",true),slotId);
+			-- target
+			else
+				link = GetInventoryItemLink("target",slotId);
+			end
+			if (link) then local iname,_,rarity,level,_,_,subtype,_,equiptype = GetItemInfo(link); end	
+			-- the textures if the items are already available
+			-- so we can get the true number of missing items
+			if not GetInventoryItemTexture("target",i) then
+				gv.data[unit].missing = gv.data[unit].missing + 1
+			end
+		end
+	end
+end
+
+---------------------------
+-- get target stats
+---------------------------
+
+function gf.Armor.iLvl.scan(unit)
+	if not spa.showIL then return end
+	Glance.Debug("function","iLvl.scan","Armor")
+
+	if not unit then unit = gv.currentPreloadUnit end
+
+	-- locals
+	local specID, lvl, count = nil,0,0;
+	local dualHand, miaMainHand, miaOffHand, hasWand, hasThrown, miaAmmo, miaRanged = false, false, false, false, false, false, false;
+	local lClass, eClass = UnitClass(unit);
+	local name = GetUnitName(unit, false)
+
+	-- no rescan targetting self
+	if (unit == "target" and name == gv.data.player.name) then gf.Armor.iLvl.endscan(unit); return end
+
+	-- end if repeat (player rescan ok, only called from equip change event)
+	if (unit == "target" and name == gv.data.target.name) then gf.Armor.iLvl.endscan(unit); return end
+	
+	-- end if mismatch
+	if not gv.currentInspectUnit == UnitGUID(unit) then gf.Armor.iLvl.endscan(unit); return end
+
+	-- name
+	gv.data[unit].name = name
+		
+	-- player spec
+	local specID = 0
+	if (unit == "player" and UnitLevel(unit) > 9 and GetSpecialization) then
+		if (UnitLevel(unit) > 9 and GetSpecialization) then
+			local currentSpec = GetSpecialization();
+			specID = currentSpec and select(1, GetSpecializationInfo(currentSpec))
+			gv.data[unit].spec = select(2,GetSpecializationInfoByID(specID));
+		end
+	-- target spec
+	else
+		if (UnitLevel(unit) > 9 and GetInspectSpecialization) then
+			specID = GetInspectSpecialization(unit);
+			gv.data[unit].spec = select(2,GetSpecializationInfoByID(specID));
+		end
+	end
+	
+	-- fury spec
+	if (specID == "268") then
+		gv.data[unit].fury = true
+	end	
+	
+	-- iterate equipment
+	for i = 1,#ga.slotItems do
+		local link = nil
+		local slotId = GetInventorySlotInfo(ga.slotItems[i])
+
+		-- not the shirt
+		if (ga.slotItems[i] ~= "ShirtSlot" and ga.slotItems[i] ~= "TabardSlot") then
+
+			-- player
+			if (unit == "player") then
+				link = GetInventoryItemLink(GetUnitName(unit,true),slotId);
+			-- target
+			else
+				link = GetInventoryItemLink(unit,slotId);
+			end
+
+			-- if we get a link
+			if (link) then
+
+				--get the item info
+				local iname,_,rarity,iLevel,_,_,subtype,_,equiptype = GetItemInfo(link);
+								
+				--do two-handed check based on mainhand weapon
+				if (ga.slotItems[i]=="MainHandSlot") then
+					if (equiptype == "INVTYPE_2HWEAPON" or equiptype == "INVTYPE_RANGED" or equiptype == "INVTYPE_RANGEDRIGHT") then
+						dualHand = true;
+					else
+						dualHand = false;
+					end
+				end
+
+				-- check for wands
+				if (ga.slotItems[i]=="RangedSlot") then
+					if (subtype == "Wands") then
+						hasWand = true
+					end
+					if (subtype == "Thrown") then
+						hasThrown = true
+					end
+				end
+				
+				-- set item level, count 
+				if (iLevel) then
+					oLevel = iLevel
+					iLevel = gf.Armor.iLvl.tooltipScan(link, unit)
+					count = count + 1
+					gv.data[unit].slot[i] = iLevel
+				end
+
+				-- count the boa gear
+				if (rarity == 7) then
+					gv.data[unit].boa = gv.data[unit].boa + 1;
+				end
+
+			else			
+
+				-- ding for missing item
+				gv.data[unit].mia = gv.data[unit].mia + 1;
+
+				-- check these, calculations to follow
+				if (ga.slotItems[i]=="MainHandSlot") then
+					miaMainHand = true;
+				elseif (ga.slotItems[i]=="SecondaryHandSlot") then
+					miaOffHand = true;
+				elseif (ga.slotItems[i]=="RangedSlot") then
+					miaRanged = true
+				elseif (ga.slotItems[i]=="AmmoSlot") then
+					miaAmmo = true
+				end
+			end
+		end
+	end
+
+	-- missing offhand, but has dualhand weapon
+	if (miaOffHand and dualHand) then
+		gv.data[unit].mitigated = gv.data[unit].mitigated + 1;
+	end
+	-- missing ranged
+	if (miaRanged) then
+		-- these classes don't use ranged
+		if (eClass == "DRUID" or eClass == "PALADIN" or eClass == "SHAMAN") then
+			gv.data[unit].mitigated = gv.data[unit].mitigated + 1;			
+		end
+	end
+	-- missing ammo
+	if (miaAmmo) then
+		-- these classes don't use ammo
+		if (eClass == "DRUID" or eClass == "PALADIN" or eClass == "SHAMAN") then
+			gv.data[unit].mitigated = gv.data[unit].mitigated + 1;			
+		end
+		-- wand and thrown don't use ammo
+		if (hasWand or hasThrown) then
+			gv.data[unit].mitigated = gv.data[unit].mitigated + 1;			
+		end
+	end
+	-- inspect does not show ammo
+	if (unit=="target") then
+		--gv.data[unit].mitigated = gv.data[unit].mitigated + 1;		
+	end
+
+	
+	--set the item level average
+	if (count > 0) then		
+		gv.data[unit].iLvl = gf.Armor.iLvl.GetAverageItemLevel(unit);
+	else
+		gv.data[unit].iLvl = 0;
+	end
+	
+	-- if mia is greater than the true number of missing items then rescan (max 5 times)
+	if (gv.data[unit].mia > gv.data[unit].missing) and gv.data[unit].scanCount < 5 then
+		gv.data[unit].scanCount = gv.data[unit].scanCount + 1
+		if spa.showTooltipOverlay then AI.texture:SetTexture(btn.texture.scan2); end
+		gf.Armor.update(self, "INSPECT_READY", UnitGUID(unit))
+	else
+		gf.Armor.iLvl.endscan(unit)
+		for i = 1,#ga.slotItems do
+			local slot = nil
+			if unit == "target" and spa.showInspectOverlay then 
+				slot = "Inspect"..ga.slotItems[i] 
+				gf.Armor.iLvl.setSlotText(slot,gv.data[unit].slot[i],unit)
+			end
+			if unit == "player" and spa.showCharacterOverlay then 
+				slot = "Character"..ga.slotItems[i] 
+				gf.Armor.iLvl.setSlotText(slot,gv.data[unit].slot[i],unit)
+			end
+		end
+		if unit == "player" and spa.showCharacterOverlay then 
+			_G["GlanceCharacterFrameText"]:SetText(HEX.gold.."iLVL: "..gf.Armor.iLvl.color(gv.data[unit].iLvl,unit))
+		end
+		if unit == "target" and spa.showInspectOverlay then 
+			_G["GlanceInspectFrameText"]:SetText(HEX.gold.."iLVL: "..gf.Armor.iLvl.color(gv.data[unit].iLvl,unit))
+		end
+	end
+	--ClearInspectPlayer()
+end
+
+---------------------------
+-- end scanning
+---------------------------
+function gf.Armor.iLvl.endscan(unit)
+	gv.data[unit].scanning = false;
+	gv.currentPreloadUnit = nil
+	if spa.showTooltipOverlay then
+		AI:Hide()		
+		gf.Armor.iLvl.tooltipUpdate()
+	end
+end
+
+
+---------------------------
+-- copy method for timer to work
+---------------------------
+function gf.Armor.scan() gf.Armor.iLvl.scan(); end
+
 
 ---------------------------
 -- load on demand
