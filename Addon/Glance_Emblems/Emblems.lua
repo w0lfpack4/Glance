@@ -47,21 +47,22 @@ function gf.Emblems.update()
 		Glance.Debug("function","update","Emblems")
 		local hasEmblems = false
 		local BT,TMP = HEX.red.."Emblems",""
-		for i=1, GetCurrencyListSize() do
-			local name, isHeader, isExpanded, isUnused, isWatched, count, icon, itemID, extraCurrencyType = GetCurrencyListInfo(i)
-			if spc.DisplayEmblems[name] then
+		for i=1, C_CurrencyInfo.GetCurrencyListSize() do
+			local data = C_CurrencyInfo.GetCurrencyListInfo(i)
+			--local name, isHeader, isExpanded, isUnused, isWatched, count, icon, itemID, extraCurrencyType = C_CurrencyInfo.GetCurrencyListInfo(i)
+			if spc.DisplayEmblems[data.name] then
 				if TMP ~= "" then TMP = TMP.."    |r" end
-				local tip, cap = unpack(gf.Emblems.tipColors(name, count, true))
-				TMP = TMP..gf.Emblems.getTitle(name,icon)..cap..count				
+				local tip, cap = unpack(gf.Emblems.tipColors(data.name, data.quantity, true))
+				TMP = TMP..gf.Emblems.getTitle(data.name,data.iconFileID)..cap..data.quantity				
 				hasEmblems = true
 			end
-			if spc.DisplayEmblems["Weekly "..name] then
-				if name == "Valor Points" or name == "Conquest Points" then
+			if spc.DisplayEmblems["Weekly "..data.name] then
+				if data.name == "Valor Points" or data.name == "Conquest Points" then
 					if TMP ~= "" then TMP = TMP.."    |r" end
 					local cap = HEX.green
-					local earned, weekly, total = unpack(gf.Emblems.getCap(name))
+					local earned, weekly, total = unpack(gf.Emblems.getCap(data.name))
 					if earned == weekly then cap = HEX.red end
-					TMP = TMP..gf.Emblems.getTitle(name,icon,true)..cap..earned.."/"..weekly
+					TMP = TMP..gf.Emblems.getTitle(data.name,data.iconFileID,true)..cap..earned.."/"..weekly
 				end
 				hasEmblems = true
 			end
@@ -81,20 +82,21 @@ function gf.Emblems.tooltip()
 	Glance.Debug("function","tooltip","Emblems")
 	local hasEmblems = false
 	tooltip.Title("Emblems","GLD")
-	for i=1, GetCurrencyListSize() do
-		local name, isHeader, isExpanded, isUnused, isWatched, count, icon, itemID, extraCurrencyType = GetCurrencyListInfo(i)
+	for i=1, C_CurrencyInfo.GetCurrencyListSize() do
+		local data = C_CurrencyInfo.GetCurrencyListInfo(i)
+		--local name, isHeader, isExpanded, isUnused, isWatched, count, icon, itemID, extraCurrencyType = C_CurrencyInfo.GetCurrencyListInfo(i)
 		if isHeader then
 			tooltip.Space()
 			tooltip.Line(name,"GLD")
 		else
-			local tip, cap = unpack(gf.Emblems.tipColors(name, count))
-			tooltip.Double(gf.is(icon,"tooltip")..name,count,tip,cap)
-			if name == "Valor Points" or name == "Conquest Points" then
-				local earned, weekly, total = unpack(gf.Emblems.getCap(name))
+			local tip, cap = unpack(gf.Emblems.tipColors(data.name, data.quantity))
+			tooltip.Double(gf.is(data.iconFileID,"tooltip")..data.name,data.quantity,tip,cap)
+			if data.name == "Valor Points" or data.name == "Conquest Points" then
+				local earned, weekly, total = unpack(gf.Emblems.getCap(data.name))
 				local namecolor,capcolor = "WHT", "GRN"
 				if earned == weekly then capcolor = "RED" end
-				if spc.DisplayEmblems["Weekly "..name] then namecolor = "LBL" end
-				tooltip.Double(gf.is(icon,"tooltip").."Weekly "..name,earned.."/"..weekly,namecolor,capcolor)
+				if spc.DisplayEmblems["Weekly "..data.name] then namecolor = "LBL" end
+				tooltip.Double(gf.is(data.iconFileID,"tooltip").."Weekly "..data.name,earned.."/"..weekly,namecolor,capcolor)
 			end
 			hasEmblems = true
 		end
@@ -139,14 +141,15 @@ function gf.Emblems.menu(level,UIDROPDOWNMENU_MENU_VALUE)
 			gf.setMenuOption(spc.Title == "Icon","Icon","Icon",level,function() spc.Title = "Icon"; gf.Emblems.update() end)
 		end
 		if gf.isMenuValue("tracking") then	
-			for i=1, GetCurrencyListSize() do
-				local name, isHeader, isExpanded, isUnused, isWatched, count, icon, itemID, extraCurrencyType = GetCurrencyListInfo(i)
-				if isHeader then
-					gf.setMenuTitle(name,level,true)
+			for i=1, C_CurrencyInfo.GetCurrencyListSize() do
+				local data = C_CurrencyInfo.GetCurrencyListInfo(i)
+				--local name, isHeader, isExpanded, isUnused, isWatched, count, icon, itemID, extraCurrencyType = C_CurrencyInfo.GetCurrencyListInfo(i)
+				if data.isHeader then
+					gf.setMenuTitle(data.name,level,true)
 				else
-					gf.setMenuOption(spc.DisplayEmblems[name]==true,name,name,level,function() if spc.DisplayEmblems[name] then spc.DisplayEmblems[name]=false else spc.DisplayEmblems[name]=true end; gf.Emblems.update() end,icon)
+					gf.setMenuOption(spc.DisplayEmblems[data.name]==true,data.name,data.name,level,function() if spc.DisplayEmblems[data.name] then spc.DisplayEmblems[data.name]=false else spc.DisplayEmblems[name]=true end; gf.Emblems.update() end,data.iconFileID)
 					if name == "Valor Points" or name == "Conquest Points" then
-						gf.setMenuOption(spc.DisplayEmblems["Weekly "..name]==true,"Weekly "..name,"Weekly "..name,level,function() if spc.DisplayEmblems["Weekly "..name] then spc.DisplayEmblems["Weekly "..name]=false else spc.DisplayEmblems["Weekly "..name]=true end; gf.Emblems.update() end,icon)		
+						gf.setMenuOption(spc.DisplayEmblems["Weekly "..data.name]==true,"Weekly "..data.name,"Weekly "..data.name,level,function() if spc.DisplayEmblems["Weekly "..data.name] then spc.DisplayEmblems["Weekly "..data.name]=false else spc.DisplayEmblems["Weekly "..data.name]=true end; gf.Emblems.update() end,data.iconFileID)		
 					end
 				end
 			end

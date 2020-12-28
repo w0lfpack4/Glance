@@ -44,6 +44,12 @@ ga.Clients = {
 	["ODIN"] = "CoD: Modern Warfare",
 	["W3"]   = "Warcraft III",
 }
+ga.BlizTable = {}
+
+---------------------------
+-- variables
+---------------------------
+gv.onlineBliz = 0
 
 ---------------------------
 -- update
@@ -53,8 +59,9 @@ function gf.Friends.update()
 		Glance.Debug("function","update","Friends")
 		local totalWoW = C_FriendList.GetNumFriends()
 		local onlineWoW = C_FriendList.GetNumOnlineFriends()
-		local totalBliz, onlineBliz = BNGetNumFriends()
-		local total, online = (totalWoW+totalBliz), (onlineWoW+onlineBliz)
+		local totalBliz = BNGetNumFriends()
+		gf.Friends.BuildBlizTable(totalBliz)
+		local total, online = (totalWoW+totalBliz), (onlineWoW+gv.onlineBliz)
 		gf.setButtonText(btn.button,"Friends: ",online,nil,nil)
 	end
 end
@@ -66,8 +73,10 @@ function gf.Friends.tooltip()
 	Glance.Debug("function","tooltip","Friends")
 
 	local totalWoW, onlineWoW = C_FriendList.GetNumFriends(), C_FriendList.GetNumOnlineFriends()
-	local totalBliz, onlineBliz = BNGetNumFriends()
-	local total, online = (totalWoW+totalBliz), (onlineWoW+onlineBliz)
+	local totalBliz = BNGetNumFriends()
+	gf.Friends.BuildBlizTable(totalBliz)
+
+	local total, online = (totalWoW+totalBliz), (onlineWoW+gv.onlineBliz)
 	local friends = {}
 	
 	-- WoW Friends
@@ -79,23 +88,19 @@ function gf.Friends.tooltip()
 	end	
 	
 	-- Blizzard Friends (on WoW)
-	for i = 1, onlineBliz do
-		local bnetIDAccount, accountName, battleTag, isBattleTagPresence, _, _, _, _, _, isAFK, isDND, broadcastText, noteText = BNGetFriendInfo(i)
-		for j=1, BNGetNumFriendGameAccounts(i) do
-			local location
-			local hasFocus, toonName, client, realmName, realmID, faction, race, class, _, zoneName, level, gameText, _, _, _, bnetIDGameAccount = BNGetFriendGameAccountInfo(i, j)
-			if( client == _G.BNET_CLIENT_WOW ) then
-				if zoneName and zoneName ~= "" then
-					if realmName and realmName ~= "" and realmName ~= playerRealmName then
-						location = zoneName.." - "..realmName
-					else
-						location = zoneName
-					end
+	for i = 1, gv.onlineBliz do
+		local bnetAccountID, accountName, battleTag, characterName, gameAccountID, client, isOnline, isAFK, isDND, note, realmName, factionName, raceName, class, zoneName, level, isBattleTagFriend, wowProjectID = unpack(ga.BlizTable[i])
+		if( client == _G.BNET_CLIENT_WOW and isOnline) then
+			if zoneName and zoneName ~= "" then
+				if realmName and realmName ~= "" and realmName ~= playerRealmName then
+					location = zoneName.." - "..realmName
 				else
-					location = realmName
+					location = zoneName
 				end
-				table.insert(friends, {toonName, level, class, location, isDND, isAFK})
+			else
+				location = realmName
 			end
+			table.insert(friends, {characterName, level, class, location, isDND, isAFK})
 		end
 	end
 
@@ -129,22 +134,20 @@ function gf.Friends.tooltip()
 
 	-- Blizzard Friends
 	tooltip.Space()
-	tooltip.Double("BattleNet Friends",onlineBliz.."/"..totalBliz,"GLD","GLD")
-	for i = 1, onlineBliz do
-		local bnetIDAccount, accountName, battleTag, isBattleTagPresence, _, _, _, _, _, isAFK, isDND, broadcastText, noteText = BNGetFriendInfo(i)
-		for j=1, BNGetNumFriendGameAccounts(i) do
-			local hasFocus, toonName, client, realmName, realmID, faction, race, class, _, zoneName, level, gameText, _, _, _, bnetIDGameAccount = BNGetFriendGameAccountInfo(i, j)
-			local status = ""
-			if isAFK then status = "  |r"..HEX.red.."[Away]|r" end
-			if isDND then status = "  |r"..HEX.red.."[Busy]|r" end
-			if client ~= "App" and client ~= "BSAp" then
-				clientName = gameText or ga.Clients[client]
-				friends[accountName] = {clientName, status}
-			else
-				if not isAFK and not isDND then status = " |r"..HEX.red.."[Away]|r" end
-				if not friends[accountName] then
-					friends[accountName] = {"IRL", status}
-				end
+	tooltip.Double("BattleNet Friends",gv.onlineBliz.."/"..totalBliz,"GLD","GLD")
+	for i = 1, gv.onlineBliz do
+		local bnetAccountID, accountName, battleTag, characterName, gameAccountID, client, isOnline, isAFK, isDND, note, realmName, factionName, raceName, class, zoneName, level, isBattleTagFriend, wowProjectID = unpack(ga.BlizTable[i])
+		local status = ""
+
+		if isAFK then status = "  |r"..HEX.red.."[Away]|r" end
+		if isDND then status = "  |r"..HEX.red.."[Busy]|r" end
+		if client ~= "App" and client ~= "BSAp" then
+			clientName = ga.Clients[client]
+			friends[accountName] = {clientName, status}
+		else
+			if not isAFK and not isDND then status = " |r"..HEX.red.."[Away]|r" end
+			if not friends[accountName] then
+				friends[accountName] = {"IRL", status}
 			end
 		end
 	end
@@ -167,6 +170,32 @@ function gf.Friends.click(self, button, down)
 	Glance.Debug("function","click","Friends")
 	if button == "LeftButton" then
 		ToggleFriendsFrame(1) --removed the value "1" from being passed to fix bug.
+	end
+end
+
+---------------------------
+-- build battlenet friends table
+---------------------------
+function gf.Friends.BuildBlizTable(total)
+	gv.onlineBliz = 0
+	wipe(ga.BlizTable)
+
+	for i = 1, total do
+		local accountInfo = C_BattleNet.GetFriendAccountInfo(i)
+		if accountInfo then
+			local class = accountInfo.gameAccountInfo.className
+
+			for k,v in pairs(LOCALIZED_CLASS_NAMES_MALE) do
+				if class == v then
+					class = k
+				end
+			end
+
+			if accountInfo.gameAccountInfo.isOnline then
+				ga.BlizTable[i] = { accountInfo.bnetAccountID, accountInfo.accountName, accountInfo.battleTag, accountInfo.gameAccountInfo.characterName, accountInfo.gameAccountInfo.gameAccountID, accountInfo.gameAccountInfo.clientProgram, accountInfo.gameAccountInfo.isOnline, accountInfo.isAFK, accountInfo.isDND, accountInfo.note, accountInfo.gameAccountInfo.realmName, accountInfo.gameAccountInfo.factionName, accountInfo.gameAccountInfo.raceName, class, accountInfo.gameAccountInfo.areaName, accountInfo.gameAccountInfo.characterLevel, accountInfo.isBattleTagFriend, accountInfo.gameAccountInfo.wowProjectID }
+				gv.onlineBliz = gv.onlineBliz + 1
+			end
+		end
 	end
 end
 

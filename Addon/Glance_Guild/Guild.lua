@@ -34,7 +34,7 @@ function gf.Guild.update()
 		Glance.Debug("function","update","Guild")
 		local onlineTotal = 0
 		if IsInGuild() then
-			GuildRoster()
+			--GuildRoster()
 			for i = 1, GetNumGuildMembers(true) do
 				 local online = select(9, GetGuildRosterInfo(i))
 				 if online then
@@ -53,7 +53,7 @@ end
 function gf.Guild.tooltip()
 	Glance.Debug("function","tooltip","Guild")
 	if IsInGuild() then
-		GuildRoster()
+		--GuildRoster()
 		local total = GetNumGuildMembers(true)
 		local motd = GetGuildRosterMOTD()
 		local guildName, guildRankName, guildRankIndex = GetGuildInfo("player");

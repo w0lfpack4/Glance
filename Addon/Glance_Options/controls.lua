@@ -26,7 +26,7 @@ function gf.createPanel(title, desc, func)
 	local parent
 	if not _G["Glance_Panel"..i] then
 		if i==1 then parent = UIParent else parent = _G["Glance_Panel1"] end
-		_G["Glance_Panel"..i] = CreateFrame( "Frame", "Glance_Panel"..i, parent )
+		_G["Glance_Panel"..i] = CreateFrame( "Frame", "Glance_Panel"..i, parent, BackdropTemplateMixin and "BackdropTemplate" )
 		_G["Glance_Panel"..i].name = title
 		if i > 1 then _G["Glance_Panel"..i].parent = parent.name end
 		InterfaceOptions_AddCategory(_G["Glance_Panel"..i])
@@ -172,7 +172,7 @@ end
 function gf.createScrollBar(parent,x,y,h,w,n,array,nameIDX,checkedIDX,func)
 	gv.Scrollbars = gv.Scrollbars + 1
 	local i = gv.Scrollbars
-	_G["backframe"..i] = CreateFrame( "Frame", "Glance_BF"..i, parent)
+	_G["backframe"..i] = CreateFrame( "Frame", "Glance_BF"..i, parent, BackdropTemplateMixin and "BackdropTemplate")
 	_G["backframe"..i]:SetPoint("TOPLEFT", x, y)
 	_G["backframe"..i]:SetHeight(h)
 	_G["backframe"..i]:SetWidth(w)
@@ -279,7 +279,7 @@ end
 ---------------------------
 function gf.createSwatch(name,panel,frameColorIdx,h,w,x,y)
 	-- createSwatch("BarColor",Glance_Panel2,1,18,18,35,-410)
-	local swatch = CreateFrame("BUTTON", "GlanceSwatch"..name, _G[panel])
+	local swatch = CreateFrame("BUTTON", "GlanceSwatch"..name, _G[panel], BackdropTemplateMixin and "BackdropTemplate")
 	swatch:SetHeight(h)
 	swatch:SetWidth(w)
 	swatch:SetPoint("TOPLEFT", _G[panel], "TOPLEFT", x, y)

@@ -1,9 +1,9 @@
-## Interface: 80300
+## Interface: 90002
 ## Title: |cff0279ffGlance: |cffffffffMounts|r
 ## X-DisplayName: Mounts
 ## Notes: Load on Demand Data Broker for Glance
 ## Author: vonbek
-## Version: 8.3.0.1
+## Version: 9.0.2.1
 ## X-Updated: 05/11/2020
 ## X-Category: Broker
 ## X-Description: Displays the number of mounts obtained. Displays a menu of available mounts organized by category and alphabet.  Click to summon a random mount based on your skill and location.
