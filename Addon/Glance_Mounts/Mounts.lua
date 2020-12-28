@@ -61,7 +61,7 @@ if UnitLevel("player") < 20 then btn.enabled = false end
 ---------------------------
 -- commands
 ---------------------------
-gf.AddCommand("Mounts","random","Summon a random mount",function() if IsMounted() then C_MountJournal.Dismiss() else gf.Mounts.summonRandom() end end)
+gf.AddCommand("Mounts","random","Summon a random mount",function() if IsMounted() then C_MountJournal.Dismiss() else C_MountJournal.SummonByID(0) end end)
 
 ---------------------------
 -- arrays

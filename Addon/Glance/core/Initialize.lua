@@ -17,7 +17,7 @@ function gf.createButton(anchor,i)
 	if v.enabled then
 		Glance.Debug("frame","create",k)
 		-- create the button frame
-		v.button = CreateFrame("BUTTON", "Glance_Buttons_"..v.name, Glance.Frames.topFrame)
+		v.button = CreateFrame("BUTTON", "Glance_Buttons_"..v.name, Glance.Frames.topFrame, BackdropTemplateMixin and "BackdropTemplate")
 		--v.button.texture = v.button:CreateTexture()
 		--v.button.texture:SetAllPoints(v.button)
 		--v.button.texture:SetColorTexture(1, 1, 1, .7)
@@ -869,7 +869,7 @@ end
 -- create the main frame
 ---------------------------
 function gf.loadFrame()
-	Glance.Frames.topFrame = CreateFrame("BUTTON", "Glance", UIParent)
+	Glance.Frames.topFrame = CreateFrame("BUTTON", "Glance", UIParent, BackdropTemplateMixin and "BackdropTemplate")
 	local tf = Glance.Frames.topFrame
 	tf:SetWidth(gv.screenWidth)
 	tf:SetHeight(16)
@@ -877,7 +877,7 @@ function gf.loadFrame()
 	tf:SetPoint("TOPRIGHT", 0, 0)
 	tf:SetFrameStrata("HIGH")	
 	
-	Glance.Frames.cloneFrame = CreateFrame("BUTTON", "GlanceClone", UIParent)
+	Glance.Frames.cloneFrame = CreateFrame("BUTTON", "GlanceClone", UIParent, BackdropTemplateMixin and "BackdropTemplate")
 	local cf = Glance.Frames.cloneFrame
 	cf:SetWidth(gv.screenWidth)
 	cf:SetHeight(16)

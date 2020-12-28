@@ -202,7 +202,7 @@ function gf.createOptionsPanel()
 
 	-- PANEL 4: module descriptions frame
 	---------------------------
-	Glance.Frames.descFrame = CreateFrame("BUTTON", "Glance", Glance_Panel4)
+	Glance.Frames.descFrame = CreateFrame("BUTTON", "Glance", Glance_Panel4, BackdropTemplateMixin and "BackdropTemplate")
 	local tf = Glance.Frames.descFrame
 	tf:SetWidth(275)
 	tf:SetHeight(415)

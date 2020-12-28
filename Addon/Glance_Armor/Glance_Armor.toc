@@ -1,9 +1,9 @@
-## Interface: 80300
+## Interface: 90002
 ## Title: |cff0279ffGlance: |cffffffffArmor|r
 ## X-DisplayName: Armor
 ## Notes: Load on Demand Data Broker for Glance
 ## Author: vonbek
-## Version: 8.3.0.1
+## Version: 9.0.2.1
 ## X-Updated: 05/11/2020
 ## X-Category: Broker
 ## X-Description: Displays the durability of the player's armor, the repair cost, the current item level.  Can Auto-Repair the player's armor at a vendor. Option to use guild funds.   Party stats available.

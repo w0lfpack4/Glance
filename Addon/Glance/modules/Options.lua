@@ -65,7 +65,7 @@ end
 function Glance.Functions.Options.onload()
 	Glance.Functions.Options.resetModuleList()
 	Glance.Panels[1] = {"Glance",GetAddOnMetadata("Glance","Notes")}
-	_G["Glance_Panel1"] = CreateFrame( "Frame", "Glance_Panel1", UIParent )
+	_G["Glance_Panel1"] = CreateFrame( "Frame", "Glance_Panel1", UIParent, BackdropTemplateMixin and "BackdropTemplate" )
 	_G["Glance_Panel1"]:Hide()
 	_G["Glance_Panel1"].name = "Glance"
 	_G["Glance_Panel1"]:SetScript('OnShow', function(self) if not IsAddOnLoaded("Glance_Options") then LoadAddOn("Glance_Options"); InterfaceAddOnsList_Update(); end end)

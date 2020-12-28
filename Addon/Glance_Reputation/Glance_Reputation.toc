@@ -1,9 +1,9 @@
-## Interface: 80300
+## Interface: 90002
 ## Title: |cff0279ffGlance: |cffffffffReputation|r
 ## X-DisplayName: Reputation
 ## Notes: Load on Demand Data Broker for Glance
 ## Author: vonbek
-## Version: 8.3.0.1
+## Version: 9.0.2.1
 ## X-Updated: 05/11/2020
 ## X-Category: Broker
 ## X-Description: Useful for tracking reputation.  Displays current reputation as a percent, or by how many points remain untill the next level.

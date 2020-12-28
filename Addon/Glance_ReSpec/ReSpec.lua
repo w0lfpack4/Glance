@@ -22,21 +22,39 @@ btn.menu              = true
 btn.timer5            = true
 
 ---------------------------
--- not available till lvl 30
----------------------------
-if UnitLevel("player") < 30 then btn.enabled = false end
-
----------------------------
 -- shortcuts
 ---------------------------
 local HEX = ga.colors.HEX
 local tooltip = gf.Tooltip
 
+---------------------------
+-- tables
+---------------------------
 ga.SPEC_STAT_STRINGS = {
 	[LE_UNIT_STAT_STRENGTH] = SPEC_FRAME_PRIMARY_STAT_STRENGTH,
 	[LE_UNIT_STAT_AGILITY] = SPEC_FRAME_PRIMARY_STAT_AGILITY,
 	[LE_UNIT_STAT_INTELLECT] = SPEC_FRAME_PRIMARY_STAT_INTELLECT,
 };
+
+ga.Stances = {
+	[1] = "Cat Form",
+	[2] = "Tree of Life",
+	[3] = "Travel Form",
+	[4] = "Aquatic Form",
+	[5] = "Bear Form",
+	[16] = "Ghost Wolf",
+	[17] = "Battle Stance",
+	[18] = "Defensive Stance",
+	[19] = "Berserker Stance",
+	[20] = "Stance of the Wise Serpent",
+	[22] = "Metamorphosis",
+	[23] = "Stance of the Sturdy Ox",
+	[24] = "Stance of the Fierce Tiger",
+	[27] = "Swift Flight Form",
+	[29] = "Flight Form",
+	[30] = "Stealth",
+	[31] = "Moonkin Form",
+}
 
 ---------------------------
 -- update
@@ -85,10 +103,9 @@ function gf.ReSpec.tooltip()
 	if not foundSet then tooltip.Double("Equipment Set:", "None", "WHT", "RED");  end
 
 	-- stance
-	local hasStance = false
-	for i=1,GetNumShapeshiftForms() do
-		local icon, name, checked, isCastable = GetShapeshiftFormInfo(i)
-		if (checked) then tooltip.Double("Stance/Aura:", name, "WHT", "GRN"); hasStance = true; end
+	local stance = GetShapeshiftFormID()
+	if stance then
+		tooltip.Double("Stance/Aura:", ga.Stances[stance], "WHT", "GRN");
 	end
 	tooltip.Notes("toggle talent frame",nil,"switch spec/gear",nil,"Items in the stance/presence/aura bar may be shown but not activated by Glance")
 end
@@ -121,9 +138,11 @@ function gf.ReSpec.menu(level,UIDROPDOWNMENU_MENU_VALUE)
 		end
 		
 		-- equipment sets
-		gf.setMenuTitle(" ")
-		gf.setMenuTitle("Switch Equipment Set")		
 		local equipmentSetIDs = C_EquipmentSet.GetEquipmentSetIDs()
+		if #equipmentSetIDs > 0 then
+			gf.setMenuTitle(" ")
+			gf.setMenuTitle("Switch Equipment Set")	
+		end	
 		for i=1,#equipmentSetIDs do
 			local name,icon,_,checked = C_EquipmentSet.GetEquipmentSetInfo(equipmentSetIDs[i]);
 			local specIndex = C_EquipmentSet.GetEquipmentSetAssignedSpec(equipmentSetIDs[i])
@@ -135,17 +154,6 @@ function gf.ReSpec.menu(level,UIDROPDOWNMENU_MENU_VALUE)
 			end;
 			gf.setMenuOption(checked,HEX.gold..name,"name",level,func,icon)
 		end
-		
-		-- stance
-		--if GetNumShapeshiftForms() > 0 then
-		--	gf.setMenuTitle(" ")
-		--	gf.setMenuTitle("Switch Stance")		
-		--	for i=1,GetNumShapeshiftForms() do
-		--		local icon, name, checked, isCastable = GetShapeshiftFormInfo(i)
-		--		func = function() CastShapeshiftForm(i); gf.sendMSG("You have switched to your stance to |cffff0000"..name); gf.ReSpec.update() end;
-		--		gf.setDisabledMenuOption(checked,HEX.gold..name,"name",level,func,icon)
-		--	end
-		--end
 	end
 end
 
